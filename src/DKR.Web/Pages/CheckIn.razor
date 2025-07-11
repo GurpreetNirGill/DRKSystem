@@ -1,0 +1,232 @@
+@page "/checkin"
+@using DKR.Core.Entities
+@using DKR.Core.Services
+@using DKR.Shared.DTOs
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Authorization
+@inject ClientService ClientService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Check-in - DKR System</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <h1>Klienten Check-in</h1>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Klient suchen</h5>
+
+                    <div class="mb-3">
+                        <label class="form-label">UUID oder Suchbegriff eingeben</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" @bind="_searchTerm" @onkeypress="OnSearchKeyPress"
+                                   placeholder="KL-2024-XXXX oder Suchbegriff..." />
+                            <button class="btn btn-primary" @onclick="SearchClient">
+                                <i class="oi oi-magnifying-glass"></i> Suchen
+                            </button>
+                            <button class="btn btn-secondary" @onclick="OpenBarcodeScanner">
+                                <i class="oi oi-camera-slr"></i> Scanner
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if (_foundClient != null)
+            {
+                <div class="card mb-4 border-success">
+                    <div class="card-body">
+                        <h5 class="card-title text-success">✅ Klient gefunden</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>UUID:</strong> @_foundClient.UUID</p>
+                                <p><strong>Geschlecht:</strong> @_foundClient.Gender</p>
+                                <p><strong>Geburtsjahr:</strong> @_foundClient.BirthYear</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Hauptsubstanz:</strong> @_foundClient.MainSubstance</p>
+                                <p><strong>Letzter Besuch:</strong> @_foundClient.LastVisitDate.ToString("dd.MM.yyyy HH:mm")</p>
+                                <p><strong>Anzahl Sessions:</strong> @_foundClient.Sessions.Count</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-success" @onclick="CompleteCheckIn">
+                            <i class="oi oi-check"></i> Check-in durchführen
+                        </button>
+                    </div>
+                </div>
+            }
+            else if (_showNewClientForm)
+            {
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Neuen Klient anlegen</h5>
+
+                        <EditForm Model="_newClient" OnValidSubmit="CreateNewClient">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary class="text-danger" />
+
+                            <div class="alert alert-info">
+                                <strong>UUID automatisch generiert:</strong> @_generatedUuid
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Geschlecht *</label>
+                                        <InputSelect class="form-select" @bind-Value="_newClient.Gender">
+                                            <option value="@Gender.Male">Männlich</option>
+                                            <option value="@Gender.Female">Weiblich</option>
+                                            <option value="@Gender.Diverse">Divers</option>
+                                            <option value="@Gender.NotSpecified">Keine Angabe</option>
+                                        </InputSelect>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Geburtsjahr *</label>
+                                        <InputNumber class="form-control" @bind-Value="_newClient.BirthYear" min="1950" max="2010" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Hauptsubstanz *</label>
+                                        <InputSelect class="form-select" @bind-Value="_newClient.MainSubstance">
+                                            <option value="@SubstanceType.Heroin">Heroin</option>
+                                            <option value="@SubstanceType.Cocaine">Kokain</option>
+                                            <option value="@SubstanceType.Amphetamines">Amphetamine</option>
+                                            <option value="@SubstanceType.OtherOpioids">Andere Opioide</option>
+                                            <option value="@SubstanceType.Cannabis">Cannabis</option>
+                                            <option value="@SubstanceType.Other">Andere</option>
+                                        </InputSelect>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Postleitzahl</label>
+                                        <InputText class="form-control" @bind-Value="_newClient.PostalCode" placeholder="20357" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <InputCheckbox class="form-check-input" @bind-Value="_newClient.FirstVisit" />
+                                    <label class="form-check-label">Erstbesucher in DKR</label>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Behandlungshistorie</label>
+                                <InputSelect class="form-select" @bind-Value="_newClient.TreatmentHistory">
+                                    <option value="@TreatmentHistory.None">Keine vorherige Behandlung</option>
+                                    <option value="@TreatmentHistory.Detoxification">Entgiftung</option>
+                                    <option value="@TreatmentHistory.Substitution">Substitution</option>
+                                    <option value="@TreatmentHistory.Rehabilitation">Entwöhnung</option>
+                                    <option value="@TreatmentHistory.Aftercare">Nachsorge</option>
+                                </InputSelect>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="oi oi-check"></i> Klient erstellen und einchecken
+                            </button>
+                            <button type="button" class="btn btn-secondary ms-2" @onclick="CancelNewClient">
+                                Abbrechen
+                            </button>
+                        </EditForm>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-md-4">
+            <QuickActionsComponent />
+            <LiveStatusComponent />
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _searchTerm = string.Empty;
+    private Client? _foundClient;
+    private bool _showNewClientForm;
+    private Client _newClient = new();
+    private string _generatedUuid = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _generatedUuid = await ClientService.GenerateUniqueUuidAsync();
+    }
+
+    private async Task SearchClient()
+    {
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+            return;
+
+        _foundClient = await ClientService.CheckInAsync(_searchTerm);
+
+        if (_foundClient == null)
+        {
+            _showNewClientForm = true;
+            _newClient = new Client
+            {
+                FirstVisit = true,
+                BirthYear = DateTime.Now.Year - 30 // Standardwert
+            };
+            _generatedUuid = await ClientService.GenerateUniqueUuidAsync();
+        }
+        else
+        {
+            _showNewClientForm = false;
+        }
+    }
+
+    private async Task OnSearchKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchClient();
+        }
+    }
+
+    private async Task CreateNewClient()
+    {
+        try
+        {
+            _newClient.UUID = _generatedUuid;
+            var createdClient = await ClientService.CreateClientAsync(_newClient);
+            _foundClient = createdClient;
+            _showNewClientForm = false;
+        }
+        catch (Exception ex)
+        {
+            // Error handling
+            await JSRuntime.InvokeVoidAsync("alert", $"Fehler: {ex.Message}");
+        }
+    }
+
+    private async Task CompleteCheckIn()
+    {
+        if (_foundClient != null)
+        {
+            Navigation.NavigateTo($"/session/{_foundClient.Id}");
+        }
+    }
+
+    private void CancelNewClient()
+    {
+        _showNewClientForm = false;
+        _newClient = new();
+        _searchTerm = string.Empty;
+    }
+
+    private async Task OpenBarcodeScanner()
+    {
+        await JSRuntime.InvokeVoidAsync("openBarcodeScanner");
+    }
+}

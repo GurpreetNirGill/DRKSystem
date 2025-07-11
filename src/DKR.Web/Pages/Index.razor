@@ -1,0 +1,495 @@
+@page "/"
+@using DKR.Web.Hubs
+@inject SessionService SessionService
+@inject ClientService ClientService
+@inject SessionLogService SessionLogService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+@using Microsoft.AspNetCore.SignalR.Client
+<PageTitle>Dashboard - DKR System</PageTitle>
+
+<div class="container-fluid">
+	<div class="row mb-4">
+		<div class="col-md-12">
+			<h1>Dashboard - Übersicht heute</h1>
+		</div>
+	</div>
+
+	<!-- KPI Cards -->
+	<div class="row mb-4">
+		<div class="col-md-3">
+			<div class="card border-primary">
+				<div class="card-body text-center">
+					<h2 class="text-primary">@_todayStats.TotalSessions</h2>
+					<p class="card-text">Konsumvorgänge heute</p>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-3">
+			<div class="card border-info">
+				<div class="card-body text-center">
+					<h2 class="text-info">@_todayStats.UniqueClients</h2>
+					<p class="card-text">Unique Besucher</p>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-3">
+			<div class="card border-warning">
+				<div class="card-body text-center">
+					<h2 class="text-warning">@_todayStats.EmergencyCount</h2>
+					<p class="card-text">Notfälle heute</p>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-3">
+			<div class="card border-success">
+				<div class="card-body text-center">
+					<h2 class="text-success">@_activeSessions.Count()</h2>
+					<p class="card-text">Aktive Sessions</p>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-8">
+			<!-- Aktuelle Sessions -->
+			<div class="card mb-4">
+				<div class="card-header d-flex justify-content-between">
+					<h5 class="mb-0">Aktuelle Sessions</h5>
+					<span class="badge bg-primary">@_activeSessions.Count() / 5</span>
+				</div>
+				<div class="card-body">
+					@if (!_activeSessions.Any())
+					{
+						<div class="text-center text-muted py-4">
+							<i class="oi oi-info" style="font-size: 2rem;"></i>
+							<p class="mt-2">Keine aktiven Sessions</p>
+						</div>
+					}
+					else
+					{
+						<div class="table-responsive">
+							<table class="table table-hover">
+								<thead>
+									<tr>
+										<th>Platz</th>
+										<th>Klient</th>
+										<th>Startzeit</th>
+										<th>Dauer</th>
+										<th>Substanz</th>
+										<th>Status</th>
+										<th>Aktionen</th>
+									</tr>
+								</thead>
+								<tbody>
+									@foreach (var session in _activeSessions)
+									{
+										<tr class="@GetSessionRowClass(session)">
+											<td>@session.Room</td>
+											<td>@session.Client?.UUID</td>
+											<td>@session.StartTime.ToString("HH:mm")</td>
+											<td>@GetSessionDuration(session)</td>
+											<td>@session.Substance</td>
+											<td>
+												<span class="badge @GetStatusBadgeClass(session.Status)">
+													@GetStatusText(session.Status)
+												</span>
+											</td>
+											<td>
+												<div class="btn-group btn-group-sm">
+													<button class="btn btn-outline-primary" @onclick="() => ViewSession(session.Id)">
+														<i class="oi oi-eye"></i>
+													</button>
+													<button class="btn btn-outline-success" @onclick="() => EndSession(session.Id)">
+														<i class="oi oi-media-stop"></i>
+													</button>
+													@if (session.EmergencyEvent == null)
+													{
+														<button class="btn btn-outline-danger" @onclick="() => EmergencySession(session.Id)">
+															<i class="oi oi-warning"></i>
+														</button>
+													}
+
+												</div>
+											</td>
+										</tr>
+									}
+								</tbody>
+							</table>
+						</div>
+					}
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-header">
+					<h5 class="mb-0">Pausieren Sessions (@_pauseSessions.Count)</h5>
+				</div>
+				<div class="card-body">
+					@if (_pauseSessions.Any())
+					{
+						<div class="row g-3">
+							@foreach (var session in _pauseSessions)
+							{
+								<div class="col-12 col-sm-6 col-md-4 col-lg-4">
+									<div class="border border-warning rounded p-3 h-100">
+										<div class="d-flex flex-column h-100">
+
+											<!-- session info -->
+											<div class="mb-2">
+												<strong>@session.Client?.UUID</strong><br />
+												<small class="text-muted">
+													@session.Room&nbsp;
+												</small>
+												<small class="text-muted">
+													@session.StartTime
+												</small>
+											</div>
+
+											<!-- buttons pinned to bottom of the card -->
+											<div class="mt-auto">
+												<button type="button" class="btn btn-warning" @onclick="() => PauseSession(session.Id)">
+													<i class="oi oi-media-play"></i>
+													@("Fortsetzen")
+												</button>
+											</div>
+										</div>
+									</div>
+								</div>
+							}
+						</div>
+					}
+					else
+					{
+						<p class="text-muted text-center">Keine Pausieren Sessions</p>
+					}
+				</div>
+			</div>
+			<!-- Schnellstatistiken Chart Placeholder -->
+			<div class="card">
+				<div class="card-header">
+					<h5 class="mb-0">Konsumvorgänge letzte 7 Tage</h5>
+				</div>
+				<div class="card-body">
+					<div class="chart-placeholder bg-light d-flex align-items-center justify-content-center" style="height: 300px;">
+						<div class="text-center text-muted">
+							<i class="oi oi-graph" style="font-size: 3rem;"></i>
+							<p class="mt-2">Chart wird geladen...</p>
+							<small>Integration mit Chart.js geplant</small>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-md-4">
+			<!-- Quick Actions -->
+			<div class="card mb-4">
+				<div class="card-header">
+					<h5 class="mb-0">🚀 Schnellaktionen</h5>
+				</div>
+				<div class="card-body">
+					<div class="d-grid gap-2">
+						<button class="btn btn-primary" @onclick="OpenCheckIn">
+							<i class="oi oi-plus"></i> Neuer Check-in
+						</button>
+						<button class="btn btn-success" @onclick="OpenSession">
+							<i class="oi oi-medical-cross"></i> Session starten
+						</button>
+						<button class="btn btn-info" @onclick="OpenHarmreduction">
+							<i class="oi oi-heart"></i> Harm Reduction
+						</button>
+						<button class="btn btn-danger" @onclick="ShowEmergencyModal">
+							<i class="oi oi-warning"></i> NOTFALL
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Live Status -->
+			<div class="card mb-4">
+				<div class="card-header">
+					<h5 class="mb-0">📊 Live-Status</h5>
+				</div>
+				<div class="card-body">
+					<div class="d-flex justify-content-between mb-2">
+						<span>Aktive Sessions:</span>
+						<strong class="text-primary">@_activeSessions.Count()</strong>
+					</div>
+					<div class="d-flex justify-content-between mb-2">
+						<span>Sitzungen pausierens:</span>
+						<strong class="text-primary">@_pauseSessions.Count()</strong>
+					</div>
+					<div class="d-flex justify-content-between mb-2">
+						<span>Freie Plätze:</span>
+						<strong class="text-success">@(5 - (_activeSessions.Count() + @_pauseSessions.Count()))</strong>
+					</div>
+					<div class="d-flex justify-content-between mb-2">
+						<span>Warteschlange:</span>
+						<strong class="text-warning">@_todayStats.WaitingCount</strong>
+					</div>
+					<div class="d-flex justify-content-between">
+						<span>Kapazität:</span>
+						<div class="progress" style="width: 60%;">
+							<div class="progress-bar" style="width: @((_activeSessions.Count() / 5.0) * 100)%"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Inventory Alerts -->
+			@if (_lowStockItems.Any())
+			{
+				<div class="card border-warning">
+					<div class="card-header text-warning">
+						<h5 class="mb-0">⚠️ Niedrige Bestände</h5>
+					</div>
+					<div class="card-body">
+						@foreach (var item in _lowStockItems)
+						{
+							<div class="mb-2">
+								<strong>@item.Name:</strong>
+								<span class="text-danger">@item.CurrentStock Einheiten</span>
+							</div>
+						}
+						<button class="btn btn-sm btn-outline-warning" @onclick="OpenInventory">
+							Lager verwalten
+						</button>
+					</div>
+				</div>
+			}
+		</div>
+	</div>
+</div>
+
+@code {
+	private List<DKR.Core.Entities.Session> _activeSessions = new();
+	private List<DKR.Core.Entities.Session> _pauseSessions = new();
+	private List<InventoryItem> _lowStockItems = new();
+	private DashboardStats _todayStats = new();
+	private Timer? _refreshTimer;
+	private HubConnection? _hubConnection;
+	private List<SessionDurationDto> sessionLogDurations = new();
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadDashboardData();
+		await InitializeSignalR();
+
+		// Auto-refresh alle 30 Sekunden als Fallback
+		_refreshTimer = new Timer(async _ =>
+		{
+			await InvokeAsync(async () =>
+			{
+				await LoadDashboardData();
+				StateHasChanged();
+			});
+		}, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+	}
+
+	private async Task InitializeSignalR()
+	{
+		try
+		{
+			_hubConnection = new HubConnectionBuilder()
+				.WithUrl(Navigation.ToAbsoluteUri("/dashboardhub"))
+				.Build();
+
+			// Session Updates
+			_hubConnection.On<SessionUpdateNotification>("SessionUpdate", async (notification) =>
+			{
+				await InvokeAsync(() =>
+				{
+					// Update session in list
+					var session = _activeSessions.FirstOrDefault(s => s.Id == notification.SessionId);
+					if (session != null)
+					{
+						session.Status = Enum.Parse<SessionStatus>(notification.Status);
+						StateHasChanged();
+					}
+				});
+			});
+
+			// Inventory Alerts
+			_hubConnection.On<InventoryAlertNotification>("InventoryAlert", async (notification) =>
+			{
+				await InvokeAsync(() =>
+				{
+					// Show toast notification
+					StateHasChanged();
+				});
+			});
+
+			// Emergency Notifications
+			_hubConnection.On<EmergencyNotification>("Emergency", async (notification) =>
+			{
+				await InvokeAsync(async () =>
+				{
+					await JSRuntime.InvokeVoidAsync("showEmergencyAlert",
+						$"🚨 NOTFALL: {notification.Type} in {notification.Location}");
+					StateHasChanged();
+				});
+			});
+
+			// KPI Updates
+			_hubConnection.On<KPIUpdateNotification>("KPIUpdate", async (notification) =>
+			{
+				await InvokeAsync(() =>
+				{
+					_todayStats.TotalSessions = notification.TodaySessions;
+					_todayStats.UniqueClients = notification.UniqueClients;
+					_todayStats.EmergencyCount = notification.EmergenciesToday;
+					StateHasChanged();
+				});
+			});
+
+			await _hubConnection.StartAsync();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"SignalR connection failed: {ex.Message}");
+		}
+	}
+
+	private async Task LoadDashboardData()
+	{
+		try
+		{
+			_activeSessions = (await SessionService.GetActiveSessionsAsync()).ToList();
+			_pauseSessions = (await SessionService.GetPauseSessionsAsync()).ToList();
+			var sessionIds = _activeSessions.Select(x => x.Id).ToList();
+			 sessionLogDurations = await SessionLogService.GetSessionDurationsBySessionIdsAsync(sessionIds);
+			// Demo-Daten für niedrige Bestände
+			_lowStockItems = new List<InventoryItem>
+			{
+				new() { Name = "Naloxon", CurrentStock = 3, MinimumStock = 10 },
+				new() { Name = "Sterile Spritzen", CurrentStock = 12, MinimumStock = 50 }
+			};
+
+			// Demo-Statistiken
+			_todayStats = new DashboardStats
+				{
+					TotalSessions = 47,
+					UniqueClients = 28,
+					EmergencyCount = 0,
+					WaitingCount = 1
+				};
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Fehler beim Laden der Dashboard-Daten: {ex.Message}");
+		}
+	}
+
+	private string GetSessionDuration(DKR.Core.Entities.Session session)
+	{
+		var sessionLog = sessionLogDurations.Find(x => x.SessionId == session.Id);
+		var totalLoggedTime = sessionLog?.TotalDuration ?? TimeSpan.Zero;
+		var startTime = sessionLog?.LastStartDate ?? session.StartTime;
+		var duration = DateTime.UtcNow - startTime + totalLoggedTime;
+		return $"{duration.Minutes:D2}:{duration.Seconds:D2}";
+	}
+
+
+
+	private string GetSessionRowClass(DKR.Core.Entities.Session session)
+	{
+		var duration = DateTime.UtcNow - session.StartTime;
+		if (duration.TotalMinutes >= 25) return "table-warning";
+		if (duration.TotalMinutes >= 20) return "table-info";
+		return "";
+	}
+
+	private string GetStatusBadgeClass(SessionStatus status)
+	{
+		return status switch
+		{
+			SessionStatus.Active => "bg-success",
+			SessionStatus.Monitoring => "bg-warning",
+			SessionStatus.Emergency => "bg-danger",
+			SessionStatus.Waiting => "bg-info",
+			_ => "bg-secondary"
+		};
+	}
+
+	private string GetStatusText(SessionStatus status)
+	{
+		return status switch
+		{
+			SessionStatus.Active => "Aktiv",
+			SessionStatus.Monitoring => "Überwachung",
+			SessionStatus.Emergency => "Notfall",
+			SessionStatus.Waiting => "Wartend",
+			_ => "Unbekannt"
+		};
+	}
+
+	private void ViewSession(string sessionId)
+	{
+		Navigation.NavigateTo($"/session/view/{sessionId}");
+	}
+
+	private void OpenCheckIn()
+	{
+		Navigation.NavigateTo("/checkin");
+	}
+
+	private void OpenSession()
+	{
+		Navigation.NavigateTo("/session");
+	}
+
+	private void OpenHarmreduction()
+	{
+		Navigation.NavigateTo("/harmreduction");
+	}
+	private void OpenInventory()
+	{
+		Navigation.NavigateTo("/inventory");
+	}
+
+
+	private async Task EndSession(string sessionId)
+	{
+		await SessionService.EndSessionAsync(sessionId);
+		await LoadDashboardData();
+	}
+	private async Task PauseSession(string sessionId)
+	{
+		await SessionService.UpdateSessionStatus(sessionId, SessionStatus.Active);
+		await LoadDashboardData();
+	}
+
+	private async Task EmergencySession(string sessionId)
+	{
+		await SessionService.MarkEmergencyAsync(sessionId, Core.Entities.EmergencyType.Overdose);
+		await LoadDashboardData();
+	}
+
+	private void ShowEmergencyModal()
+	{
+		// Emergency Modal implementieren
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		_refreshTimer?.Dispose();
+
+		if (_hubConnection is not null)
+		{
+			await _hubConnection.DisposeAsync();
+		}
+	}
+	private void ResumeSession(Session session)
+	{
+		// TODO: your resume logic here
+	}
+
+	public class DashboardStats
+	{
+		public int TotalSessions { get; set; }
+		public int UniqueClients { get; set; }
+		public int EmergencyCount { get; set; }
+		public int WaitingCount { get; set; }
+	}
+}

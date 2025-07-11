@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  dkr-web:
+    build:
+      context: ./src
+      dockerfile: DKR.Web/Dockerfile
+    ports:
+      - "5002:80"
+      - "5003:443"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=dkr-db;Database=DKR;User=sa;Password=YourStrong@Password123;TrustServerCertificate=true
+      - DeploymentMode=OnPremise
+    depends_on:
+      - dkr-db
+    networks:
+      - dkr-network
+    volumes:
+      - ./data/uploads:/app/uploads
+      - ./data/logs:/app/logs
+
+  dkr-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong@Password123
+      - MSSQL_PID=Express
+    ports:
+      - "1434:1433"
+    volumes:
+      - dkr-db-data:/var/opt/mssql
+    networks:
+      - dkr-network
+
+volumes:
+  dkr-db-data:
+
+networks:
+  dkr-network:
+    driver: bridge

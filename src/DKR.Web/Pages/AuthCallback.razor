@@ -1,0 +1,49 @@
+﻿@page "/auth-callback"
+@attribute [AllowAnonymous]
+@inject IHttpContextAccessor CtxAcc
+@inject IIdentityProvider IdentityProvider
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthProvider
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+
+@code {
+    [Parameter, SupplyParameterFromQuery] public string? uid { get; set; }
+    [Parameter, SupplyParameterFromQuery] public bool remember { get; set; }
+    [Parameter, SupplyParameterFromQuery(Name = "return")] public string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Guard‑clause: missing user id ⇒ bounce to login
+        if (string.IsNullOrWhiteSpace(uid))
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        var user = await IdentityProvider.GetUserInfoAsync(uid!);
+
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.UserId),
+            new Claim(ClaimTypes.Name,           user.Username),
+            new Claim(ClaimTypes.Email,          user.Email ?? "")
+        };
+        foreach (var role in user.Roles)
+            claims.Add(new Claim(ClaimTypes.Role, role));
+
+        await CtxAcc.HttpContext!.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(new ClaimsIdentity(
+                claims, CookieAuthenticationDefaults.AuthenticationScheme)),
+            new AuthenticationProperties { IsPersistent = remember });
+
+        if (AuthProvider is DKR.Web.Auth.CookieAuthenticationStateProvider cp)
+            cp.NotifyAuthStateChanged();
+
+        // Navigate to requested returnUrl or home
+        var target = string.IsNullOrWhiteSpace(ReturnUrl) ? "/" : ReturnUrl;
+        Nav.NavigateTo(target, forceLoad: true);
+    }
+}

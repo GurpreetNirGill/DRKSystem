@@ -1,0 +1,170 @@
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">Live Status</h5>
+        @if (!_isConnected)
+        {
+            <div class="alert alert-warning">
+                <i class="oi oi-warning"></i> Verbindung wird hergestellt...
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-success">
+                <i class="oi oi-check"></i> Verbunden! Empfange Live-Updates...
+            </div>
+            <!-- Your live status content here -->
+            <div class="status-container">
+                @foreach (var status in _statusUpdates)
+                {
+                    <div class="status-item">@status</div>
+                }
+            </div>
+        }
+
+        @if (_connectionError)
+        {
+            <div class="alert alert-danger mt-3">
+                <i class="oi oi-warning"></i> Verbindungsfehler: @_errorMessage
+                <button class="btn btn-sm btn-outline-danger ml-2" @onclick="AttemptReconnect">
+                    Erneut verbinden
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private HubConnection? _hubConnection;
+    private bool _isConnected;
+    private bool _connectionError;
+    private string _errorMessage = "";
+    private List<string> _statusUpdates = new List<string>();
+
+    [Parameter]
+    public EventCallback<bool> OnConnectionStatusChanged { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ConnectToHub();
+    }
+
+    private async Task ConnectToHub()
+    {
+        try
+        {
+            _connectionError = false;
+
+            // Get authentication state
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+            if (!authState.User.Identity?.IsAuthenticated ?? false)
+            {
+                _connectionError = true;
+                _errorMessage = "Benutzer ist nicht authentifiziert";
+                return;
+            }
+
+            // Create the hub connection
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(NavigationManager.ToAbsoluteUri("/dashboardhub"), options =>
+                {
+                    // Enable withCredentials for cookie-based auth
+                    //options.WithCredentials = true;
+
+                    // Try to get token if your auth system uses tokens
+                    options.AccessTokenProvider = async () =>
+                    {
+                        // For token-based auth, get the token
+                        // This is a common approach if you're using JWT tokens
+                        try
+                        {
+                            // Try to get token from localStorage if you're using JWT
+                            var token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "authToken");
+                            return string.IsNullOrEmpty(token) ? null : token;
+                        }
+                        catch
+                        {
+                            // Fallback to cookie auth if token retrieval fails
+                            return null;
+                        }
+                    };
+                })
+                .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30) })
+                .Build();
+
+            // Register hub methods
+            _hubConnection.On<string>("ReceiveStatusUpdate", (update) =>
+            {
+                _statusUpdates.Add(update);
+                StateHasChanged();
+            });
+
+            // Connection events
+            _hubConnection.Closed += async (error) =>
+            {
+                _isConnected = false;
+                if (error != null)
+                {
+                    _connectionError = true;
+                    _errorMessage = error.Message;
+                }
+                await OnConnectionStatusChanged.InvokeAsync(false);
+                StateHasChanged();
+            };
+
+            _hubConnection.Reconnecting += (error) =>
+            {
+                _isConnected = false;
+                StateHasChanged();
+                return Task.CompletedTask;
+            };
+
+            _hubConnection.Reconnected += (connectionId) =>
+            {
+                _isConnected = true;
+                _connectionError = false;
+                StateHasChanged();
+                return Task.CompletedTask;
+            };
+
+            // Start the connection
+            await _hubConnection.StartAsync();
+            _isConnected = true;
+            await OnConnectionStatusChanged.InvokeAsync(true);
+        }
+        catch (Exception ex)
+        {
+            _isConnected = false;
+            _connectionError = true;
+            _errorMessage = ex.Message;
+            await OnConnectionStatusChanged.InvokeAsync(false);
+            Console.Error.WriteLine($"SignalR Connection Error: {ex.Message}");
+        }
+    }
+
+    private async Task AttemptReconnect()
+    {
+        if (_hubConnection != null)
+        {
+            await _hubConnection.DisposeAsync();
+            _hubConnection = null;
+        }
+
+        await ConnectToHub();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}

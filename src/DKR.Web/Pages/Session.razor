@@ -1,0 +1,380 @@
+@page "/session"
+@page "/session/{ClientId}"
+@page "/session/view/{SessionId}"
+
+@using DKR.Web.Components
+@using DKR.Core.Services
+@using DKR.Core.Entities
+@using DKR.Shared.Enums
+
+@inject SessionService SessionService
+@inject SessionLogService SessionLogService
+@inject ClientService ClientService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+@implements IDisposable
+
+<PageTitle>Session - DKR System</PageTitle>
+
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-md-8">
+			<h1>Konsumvorgang dokumentieren</h1>
+
+			@if (!string.IsNullOrEmpty(_errorMessage))
+			{
+				<div class="alert alert-danger">
+					<i class="oi oi-warning"></i> @_errorMessage
+				</div>
+			}
+
+			<div class="alert alert-warning">
+				<i class="oi oi-clock"></i> <strong>Maximale Verweildauer:</strong> 30 Minuten pro Session
+			</div>
+
+			@if (_currentSession != null)
+			{
+				<div class="card border-success mb-4">
+					<div class="card-body">
+						<h5 class="card-title text-success">
+							<i class="oi oi-circle-check"></i> Aktive Session
+						</h5>
+						<div class="row">
+							<div class="col-md-6">
+								<p><strong>Klient:</strong> @_currentSession.Client?.UUID</p>
+								<p><strong>Raum:</strong> @_currentSession.Room</p>
+								<p><strong>Startzeit:</strong> @_currentSession.StartTime.ToString("HH:mm:ss")</p>
+							</div>
+							<div class="col-md-6">
+								<div class="session-timer">
+									<h4 class="text-primary">⏱️ @_sessionDuration</h4>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			}
+
+			<EditForm Model="_sessionForm" OnValidSubmit="HandleSessionAction">
+				<DataAnnotationsValidator />
+				<ValidationSummary class="text-danger" />
+
+				<div class="card mb-4">
+					<div class="card-body">
+						<h5 class="card-title">Session-Details</h5>
+
+						<div class="row">
+							<div class="col-md-6">
+								<div class="mb-3">
+									<label class="form-label">Klient-ID</label>
+									@if (ClientId != null || SessionId != null)
+									{
+										<InputText class="form-control" @bind-Value="_sessionForm.ClientId" readonly="@(_currentSession != null)" />
+									}
+									else
+									{
+										<InputSelect class="form-select" @bind-Value="_sessionForm.ClientId" disabled="@(_currentSession != null)">
+											<option value="">-- Client wählen --</option>
+											@foreach (var clientId in clientIds)
+											{
+												<option value="@clientId">@clientId</option>
+											}
+										</InputSelect>
+									}
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="mb-3">
+									<label class="form-label">Raum/Platz</label>
+									<InputSelect class="form-select" @bind-Value="_sessionForm.Room" disabled="@(_currentSession != null)">
+										<option value="">-- Raum wählen --</option>
+										@for (int i = 1; i <= 5; i++)
+										{
+											if (!roomList.Contains($"Raum {i}"))
+											{
+												<option value="Raum @i">Raum @i</option>
+											}
+										}
+									</InputSelect>
+								</div>
+							</div>
+						</div>
+
+						<!-- Substance and Method -->
+						<div class="row">
+							<div class="col-md-6">
+								<div class="mb-3">
+									<label class="form-label">Substanz *</label>
+									<InputSelect class="form-select" @bind-Value="_sessionForm.Substance" disabled="@(_currentSession != null)">
+										<option value="@SubstanceType.Heroin">Heroin (Diamorphin)</option>
+										<option value="@SubstanceType.Cocaine">Kokain</option>
+										<option value="@SubstanceType.Amphetamines">Amphetamine</option>
+										<option value="@SubstanceType.OtherOpioids">Andere Opioide</option>
+										<option value="@SubstanceType.Other">Andere</option>
+									</InputSelect>
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="mb-3">
+									<label class="form-label">Applikationsweg *</label>
+									<InputSelect class="form-select" @bind-Value="_sessionForm.ApplicationMethod" disabled="@(_currentSession != null)">
+										<option value="@ApplicationMethod.Intravenous">Intravenös</option>
+										<option value="@ApplicationMethod.Inhalation">Inhalativ (Rauchen)</option>
+										<option value="@ApplicationMethod.Intranasal">Intranasal (Schnupfen)</option>
+										<option value="@ApplicationMethod.Oral">Oral</option>
+									</InputSelect>
+								</div>
+							</div>
+						</div>
+
+						<!-- Supplies -->
+						<div class="mb-3">
+							<label class="form-label">Ausgegebene Utensilien</label>
+							<div class="row">
+								<div class="col-md-4">
+									<div class="form-check">
+										<input class="form-check-input" type="checkbox" @bind="_sessionForm.Supply.SterileSyringe" disabled="@(_currentSession != null)" />
+										<label class="form-check-label">Sterile Spritze (2ml)</label>
+									</div>
+									<div class="form-check">
+										<input class="form-check-input" type="checkbox" @bind="_sessionForm.Supply.SterileNeedle" disabled="@(_currentSession != null)" />
+										<label class="form-check-label">Sterile Nadel</label>
+									</div>
+								</div>
+								<div class="col-md-4">
+									<div class="form-check">
+										<input class="form-check-input" type="checkbox" @bind="_sessionForm.Supply.Filter" disabled="@(_currentSession != null)" />
+										<label class="form-check-label">Filter</label>
+									</div>
+									<div class="form-check">
+										<input class="form-check-input" type="checkbox" @bind="_sessionForm.Supply.Spoon" disabled="@(_currentSession != null)" />
+										<label class="form-check-label">Löffel</label>
+									</div>
+								</div>
+								<div class="col-md-4">
+									<div class="form-check">
+										<input class="form-check-input" type="checkbox" @bind="_sessionForm.Supply.AlcoholSwab" disabled="@(_currentSession != null)" />
+										<label class="form-check-label">Alkoholtupfer</label>
+									</div>
+									<div class="form-check">
+										<input class="form-check-input" type="checkbox" @bind="_sessionForm.Supply.Tourniquet" disabled="@(_currentSession != null)" />
+										<label class="form-check-label">Tourniquet</label>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Optional Vitals -->
+						<div class="row">
+							<div class="col-md-6">
+								<div class="mb-3">
+									<label class="form-label">Blutdruck (optional)</label>
+									<InputText class="form-control" @bind-Value="_sessionForm.BloodPressure" readonly="@(_currentSession != null)" placeholder="120/80" />
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="mb-3">
+									<label class="form-label">Puls (optional)</label>
+									<InputNumber class="form-control" @bind-Value="_sessionForm.Pulse" readonly="@(_currentSession != null)" placeholder="72" />
+								</div>
+							</div>
+						</div>
+
+						<!-- Notes -->
+						<div class="mb-3">
+							<label class="form-label">Besonderheiten / Notizen</label>
+							<InputTextArea class="form-control" @bind-Value="_sessionForm.Notes" rows="3" placeholder="Auffälligkeiten, Beratungsgespräch, etc." readonly="@(SessionId != null)" />
+						</div>
+					</div>
+				</div>
+
+				@if (SessionId == null)
+				{
+					<div class="d-flex gap-2 mb-4">
+						@if (_currentSession == null)
+						{
+							<button type="submit" class="btn btn-success">
+								<i class="oi oi-media-play"></i> Session starten
+							</button>
+						}
+						else
+						{
+							<button type="submit" class="btn btn-primary">
+								<i class="oi oi-media-stop"></i> Session beenden
+							</button>
+							<button type="button" class="btn btn-warning" @onclick="PauseSession">
+								<i class="@(_isPaused ? "oi oi-media-play" : "oi oi-media-pause")"></i>
+								@(_isPaused ? "Fortsetzen" : "Pausieren")
+							</button>
+						}
+						<button type="button" class="btn btn-danger" @onclick="EmergencySession">
+							<i class="oi oi-warning"></i> NOTFALL
+						</button>
+					</div>
+				}
+			</EditForm>
+		</div>
+
+		<div class="col-md-4">
+			<QuickActionsComponent />
+			<ActiveSessionsComponent />
+		</div>
+	</div>
+</div>
+
+@code {
+	[Parameter] public string? ClientId { get; set; }
+	[Parameter] public string? SessionId { get; set; }
+
+	private Core.Entities.Session? _currentSession;
+	private Core.Entities.Session _sessionForm = new() { Supply = new Supply() };
+	private Core.Entities.SessionLog _sessionLog = new();
+	private string _errorMessage = string.Empty;
+	private string _sessionDuration = "00:00:00";
+	private TimeSpan _durationTimer;
+	private DateTime? _pausedStartTime = null;
+	private TimeSpan _pausedDuration;
+	private bool _isPaused;
+	private List<string> clientIds = new();
+	private List<string> roomList = new();
+	private CancellationTokenSource _cts = new();
+	private System.Diagnostics.Stopwatch _sw = new();
+	private SessionDurationDto sessionDurationDto = new();
+
+	protected override async Task OnInitializedAsync()
+	{
+		if (string.IsNullOrEmpty(SessionId))
+		{
+			var entitySession = await SessionService.GetActiveAndPauseSessionsAsync();
+			roomList = entitySession.Select(x => x.Room).ToList();
+		}
+		if (!string.IsNullOrEmpty(ClientId))
+		{
+			_sessionForm.ClientId = ClientId;
+		}
+		else if (!string.IsNullOrEmpty(SessionId))
+		{
+			_currentSession = await SessionService.GetSessionByIdAsync(SessionId);
+			_sessionForm = _currentSession;
+
+			// Handle empty logs
+			if (_currentSession?.SessionLogs?.Any() == true)
+			{
+				sessionDurationDto = _currentSession.SessionLogs
+					.GroupBy(log => log.SessionId)
+					.Select(group => new SessionDurationDto
+						{
+							SessionId = group.Key,
+							TotalDuration = group.Aggregate(TimeSpan.Zero, (sum, log) => sum + log.Duration),
+							LastStartDate = group.Max(log => log.StartTime)
+						})
+					.FirstOrDefault()!;
+			}
+		}
+		else
+		{
+			clientIds = await ClientService.GetAllClientIdAsync();
+		}
+
+		_sw.Start();
+		_ = RunCounterAsync(_cts.Token);
+	}
+
+	private async Task HandleSessionAction()
+	{
+		try
+		{
+			if (_currentSession == null)
+			{
+				await StartSession();
+			}
+			else
+			{
+				await EndSession();
+			}
+		}
+		catch (Exception ex)
+		{
+			_errorMessage = ex.Message;
+		}
+	}
+
+	private async Task StartSession()
+	{
+		_currentSession = await SessionService.StartSessionAsync(_sessionForm);
+		_currentSession = await SessionService.GetSessionByIdAsync(_currentSession.Id);
+		_errorMessage = string.Empty;
+	}
+
+	private async Task EndSession()
+	{
+		if (_currentSession != null)
+		{
+			await SessionService.EndSessionAsync(_currentSession.Id, _sessionForm.Notes);
+			_currentSession = null;
+			Dispose();
+			Navigation.NavigateTo("/");
+		}
+	}
+
+	private async Task PauseSession()
+	{
+		if (_isPaused)
+		{
+			if (_pausedStartTime.HasValue)
+			{
+				_pausedDuration += DateTime.UtcNow - _pausedStartTime.Value;
+				_pausedStartTime = null;
+			}
+			_sw.Start();
+			await SessionService.UpdateSessionStatus(_sessionForm.Id, SessionStatus.Active);
+		}
+		else
+		{
+			_pausedStartTime = DateTime.UtcNow;
+			_sw.Stop();
+			await SessionService.UpdateSessionStatus(_sessionForm.Id, SessionStatus.Pause, true);
+		}
+		_isPaused = !_isPaused;
+	}
+
+	private async Task EmergencySession()
+	{
+		if (_currentSession == null)
+		{
+			await SessionService.CreateEmergencySessionAsync(_sessionForm, Core.Entities.EmergencyType.Other);
+		}
+		else
+		{
+			await SessionService.MarkEmergencyAsync(_currentSession.Id, Core.Entities.EmergencyType.Other);
+			_currentSession = null;
+			Dispose();
+		}
+		// await JSRuntime.InvokeVoidAsync("alert", "Notfall wurde gemeldet!");
+		Navigation.NavigateTo("/");
+	}
+
+	private async Task RunCounterAsync(CancellationToken token)
+	{
+		while (!token.IsCancellationRequested)
+		{
+			if (!_isPaused && _currentSession != null)
+			{
+				if (SessionId != null && sessionDurationDto != null)
+				{
+					_durationTimer = DateTime.UtcNow - sessionDurationDto.LastStartDate + sessionDurationDto.TotalDuration - _pausedDuration;
+				}
+				else
+				{
+					_durationTimer = DateTime.UtcNow - _currentSession.StartTime - _pausedDuration;
+				}
+				_sessionDuration = $"{_durationTimer.Hours:D2}:{_durationTimer.Minutes:D2}:{_durationTimer.Seconds:D2}";
+				await InvokeAsync(StateHasChanged);
+			}
+			await Task.Delay(1000, token);
+		}
+	}
+
+	public void Dispose() => _cts.Cancel();
+}

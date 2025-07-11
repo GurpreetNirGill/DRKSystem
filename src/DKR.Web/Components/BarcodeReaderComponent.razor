@@ -1,0 +1,182 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<div class="barcode-reader">
+    @if (_isScanning)
+    {
+        <div class="scanner-overlay">
+            <div class="scanner-container">
+                <div class="scanner-header">
+                    <h5>Barcode/QR-Code Scanner</h5>
+                    <button type="button" class="btn-close" @onclick="StopScanning"></button>
+                </div>
+                <div class="scanner-body">
+                    <video @ref="_videoElement" class="scanner-video" autoplay muted></video>
+                    <div class="scanner-target">
+                        <div class="scanner-line"></div>
+                    </div>
+                    <canvas @ref="_canvasElement" style="display: none;"></canvas>
+                </div>
+                <div class="scanner-footer">
+                    <button class="btn btn-secondary" @onclick="SwitchCamera">
+                        <i class="oi oi-camera-slr"></i> Kamera wechseln
+                    </button>
+                    <button class="btn btn-primary" @onclick="TakePicture">
+                        <i class="oi oi-aperture"></i> Scannen
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="StopScanning">
+                        Abbrechen
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback<string> OnCodeScanned { get; set; }
+    
+    private ElementReference _videoElement;
+    private ElementReference _canvasElement;
+    private bool _isScanning = false;
+    private IJSObjectReference? _jsModule;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/barcode-scanner.js");
+        }
+    }
+
+    public async Task StartScanningAsync()
+    {
+        if (_jsModule is not null)
+        {
+            _isScanning = true;
+            StateHasChanged();
+            
+            await _jsModule.InvokeVoidAsync("startCamera", _videoElement);
+        }
+    }
+
+    private async Task StopScanning()
+    {
+        if (_jsModule is not null)
+        {
+            await _jsModule.InvokeVoidAsync("stopCamera");
+        }
+        
+        _isScanning = false;
+        StateHasChanged();
+    }
+
+    private async Task SwitchCamera()
+    {
+        if (_jsModule is not null)
+        {
+            await _jsModule.InvokeVoidAsync("switchCamera", _videoElement);
+        }
+    }
+
+    private async Task TakePicture()
+    {
+        if (_jsModule is not null)
+        {
+            var result = await _jsModule.InvokeAsync<string>("captureAndDecode", _videoElement, _canvasElement);
+            
+            if (!string.IsNullOrEmpty(result))
+            {
+                await OnCodeScanned.InvokeAsync(result);
+                await StopScanning();
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsModule is not null)
+        {
+            await _jsModule.DisposeAsync();
+        }
+    }
+}
+
+<style>
+    .scanner-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1050;
+    }
+
+    .scanner-container {
+        background: white;
+        border-radius: 8px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+    }
+
+    .scanner-header {
+        padding: 1rem;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .scanner-body {
+        position: relative;
+        padding: 1rem;
+    }
+
+    .scanner-video {
+        width: 100%;
+        height: 300px;
+        object-fit: cover;
+        border-radius: 4px;
+    }
+
+    .scanner-target {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 200px;
+        height: 200px;
+        border: 2px solid #28a745;
+        border-radius: 4px;
+    }
+
+    .scanner-line {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #28a745;
+        animation: scan 2s linear infinite;
+    }
+
+    @@keyframes scan {
+        0% { top: 0; }
+        50% { top: 50%; }
+        100% { top: 100%; }
+    }
+
+    .scanner-footer {
+        padding: 1rem;
+        border-top: 1px solid #dee2e6;
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+    }
+</style>

@@ -1,0 +1,72 @@
+@using DKR.Shared.DTOs
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">Schnellaktionen</h5>
+        <div class="d-grid gap-2">
+            <button class="btn btn-success" @onclick="OpenCheckIn">
+                <i class="oi oi-person"></i> Neuer Check-in
+            </button>
+            <button class="btn btn-warning" @onclick="ViewActiveSessions">
+                <i class="oi oi-clock"></i> Aktive Sessions (@_activeSessionCount)
+            </button>
+            <button class="btn btn-danger" @onclick="OpenEmergency">
+                <i class="oi oi-warning"></i> Notfall
+            </button>
+            <button class="btn btn-info" @onclick="OpenInventory">
+                <i class="oi oi-list"></i> Inventar
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    [Inject] public NavigationManager Navigation { get; set; } = null!;
+
+    [Inject] public SessionService SessionService { get; set; } = null!;
+
+    private int _activeSessionCount = 0;
+
+    protected override async Task OnInitializedAsync()
+
+    {
+
+        var activeSessions = await SessionService.GetActiveStatusSessionsAsync();
+
+        _activeSessionCount = activeSessions.Count();
+
+    }
+
+    private void OpenCheckIn()
+
+    {
+
+        Navigation.NavigateTo("/checkin");
+
+    }
+
+    private void ViewActiveSessions()
+
+    {
+
+        Navigation.NavigateTo("/active-session");
+
+    }
+
+    private void OpenEmergency()
+    {
+
+        Navigation.NavigateTo("/emergency");
+
+    }
+
+    private void OpenInventory()
+
+    {
+
+        Navigation.NavigateTo("/inventory");
+
+    }
+
+}

@@ -1,0 +1,188 @@
+@using DKR.Web.Auth
+@inject DKR.Core.Interfaces.IAuthorizationService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthProvider
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">DKR System</a>
+        <button title="Navigation menu" class="navbar-toggler d-md-none" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@GetNavMenuClass() nav-scrollable">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-dashboard" aria-hidden="true"></span> Dashboard
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="checkin">
+                <span class="oi oi-person" aria-hidden="true"></span> Check-in
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="session">
+                <span class="oi oi-medical-cross" aria-hidden="true"></span> Session
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="clients">
+                <span class="oi oi-people" aria-hidden="true"></span> Klienten
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="harmreduction">
+                <span class="oi oi-heart" aria-hidden="true"></span> Harm Reduction
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="inventory">
+                <span class="oi oi-box" aria-hidden="true"></span> Lager
+            </NavLink>
+        </div>
+
+        @if (AuthService.IsInRole("Administrator"))
+        {
+            <hr class="my-2" style="border-color: rgba(255,255,255,0.3); margin: 10px 15px;" />
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="reports">
+                    <span class="oi oi-graph" aria-hidden="true"></span> Reports
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="export">
+                    <span class="oi oi-data-transfer-upload" aria-hidden="true"></span> Export
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="settings">
+                    <span class="oi oi-cog" aria-hidden="true"></span> Einstellungen
+                </NavLink>
+            </div>
+        }
+
+        @* Debug: Show authentication state *@
+        <AuthorizeView>
+            <Authorized>
+                <div style="color:rgba(255,255,255,0.8); font-size:small; background-color: rgba(0,0,0,0.2); margin: 10px 15px; padding: 6px 8px; border-radius: 4px;">AUTH: @context.User.Identity?.Name</div>
+            </Authorized>
+            <NotAuthorized>
+                <div style="color:rgba(255,255,255,0.6); font-size:small; background-color: rgba(0,0,0,0.2); margin: 10px 15px; padding: 6px 8px; border-radius: 4px;">NOT AUTH</div>
+            </NotAuthorized>
+        </AuthorizeView>
+
+        @* Hide login/logout on /login and /logout pages *@
+        @* @if (!IsLoginOrLogoutPage())
+        { *@
+            <AuthorizeView>
+                <Authorized>
+                      <div class="nav-item px-3">
+                    	 <a href="javascript:void(0)" class="nav-link" @onclick="OnLogoutClick" @onclick:preventDefault>  
+                             <span class="oi oi-account-logout" aria-hidden="true"></span> Logout </a></div>
+                </Authorized>
+                <NotAuthorized>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="login">
+                            <span class="oi oi-account-login" aria-hidden="true"></span> Login
+                        </NavLink>
+                    </div>
+                </NotAuthorized>
+            </AuthorizeView>
+     @*    } *@
+
+        <div class="position-absolute bottom-0 w-100 p-3">
+            <button class="btn btn-danger w-100" @onclick="ShowEmergency">
+                <span class="oi oi-warning"></span> NOTFALL
+            </button>
+        </div>
+    </nav>
+</div>
+
+<style>
+    .navbar-toggler {
+        background-color: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .nav-scrollable {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        max-height: calc(100vh - 3.5rem);
+        overflow-y: auto;
+        padding-top: 1rem;
+    }
+    
+    .nav-item {
+        width: 100%;
+    }
+    
+    .nav-item a {
+        color: rgba(255, 255, 255, 0.85) !important;
+        border-radius: 4px;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        margin: 0.1rem 0;
+    }
+    
+    .nav-item a.active {
+        background-color: rgba(255, 255, 255, 0.3) !important;
+        color: white !important;
+        font-weight: 500;
+    }
+    
+    .nav-item a:hover {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        color: white !important;
+    }
+    
+    .nav-item a span[class^="oi"] {
+        margin-right: 0.5rem;
+        width: 1rem;
+    }
+</style>
+
+@code {
+    private bool collapseNavMenu = false;
+    
+    private string GetNavMenuClass()
+    {
+        return collapseNavMenu ? "d-none d-md-flex" : "d-flex";
+    }
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void ShowEmergency()
+    {
+        // Emergency Modal anzeigen
+    }
+
+    private async void OnLogoutClick()
+    {
+        if (AuthProvider is InMemoryAuthStateProvider p)
+            await p.SignOutAsync();
+         Navigation.NavigateTo("/login", true);
+    }
+    private bool IsLoginOrLogoutPage()
+    {
+        var uri = Navigation.ToBaseRelativePath(Navigation.Uri).ToLower();
+        return uri.StartsWith("login") || uri.StartsWith("logout");
+    }
+}

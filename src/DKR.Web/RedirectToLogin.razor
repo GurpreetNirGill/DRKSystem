@@ -1,0 +1,41 @@
+﻿@using DKR.Web.Auth
+@using Microsoft.AspNetCore.Components
+@using DKR.Web.Pages
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthProvider
+@inject ProtectedLocalStorage _store
+@code {
+
+    private bool _shouldRenderLogin;
+    private bool _hasRedirected;
+
+    protected override void OnInitialized()
+    {
+        var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+
+        if (relativePath.StartsWith("login", StringComparison.OrdinalIgnoreCase))
+        {
+            _shouldRenderLogin = true;
+        }
+    }
+
+    protected override async void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && !_shouldRenderLogin && !_hasRedirected)
+        {
+          var stored = await _store.GetAsync<string>("dkr.auth");
+            if (!stored.Success)
+            {
+            _hasRedirected = true;
+            Nav.NavigateTo("/login", true);
+            }
+            
+        }
+    }
+}
+
+@if (_shouldRenderLogin)
+{
+    <Login />
+}

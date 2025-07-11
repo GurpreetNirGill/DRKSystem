@@ -1,0 +1,119 @@
+@using DKR.Core.Services
+@using DKR.Core.Entities
+@using DKR.Shared.Enums
+@using DKR.Shared.Constants
+@inject SessionService SessionService
+@inject SessionLogService SessionLogService
+<div class="card">
+	<div class="card-header">
+		<h6 class="mb-0">?? Aktive Sessions (@_activeSessions.Count)</h6>
+	</div>
+	<div class="card-body">
+		@if (_activeSessions.Any())
+		{
+			@foreach (var session in _activeSessions)
+			{
+				<div class="border rounded p-2 mb-2 @GetSessionStatusClass(session.Status,session.EmergencyEvent!= null ? true : false)">
+					<div class="d-flex justify-content-between align-items-center">
+						<div>
+							<strong>@session.Client?.UUID</strong><br>
+							<small class="text-muted">@session.Room | @session.StartTime.ToString("HH:mm")</small>
+						</div>
+						<div class="text-end">
+							<span class="badge bg-@GetSessionStatusBadgeColor(session.Status)">
+								@SystemConstants.GetSessionStatusText(session.Status)
+							</span>
+							<br>
+							<small class="text-muted">@GetSessionDuration(session)</small>
+						</div>
+					</div>
+				</div>
+			}
+		}
+		else
+		{
+			<p class="text-muted text-center">Keine aktiven Sessions</p>
+		}
+	</div>
+</div>
+
+@code {
+	private List<Session> _activeSessions = new();
+	private List<SessionDurationDto> sessionLogDurations = new();
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadActiveSessions();
+		SessionService.UpdateSession += OnUpdateSession;
+		// Auto-refresh every 30 seconds
+		var timer = new Timer(async _ =>
+		{
+			await LoadActiveSessions();
+			await InvokeAsync(StateHasChanged);
+		}, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+
+	}
+
+	private async void OnUpdateSession()
+	{
+		await LoadActiveSessions();
+		await InvokeAsync(StateHasChanged);
+	}
+
+	private void DisPose()
+	{
+		SessionService.UpdateSession -= OnUpdateSession;
+	}
+
+	private async Task LoadActiveSessions()
+	{
+		try
+		{
+			_activeSessions = (await SessionService.GetActiveSessionsAsync()).ToList();
+			var sessionIds = _activeSessions.Select(x => x.Id).ToList();
+			sessionLogDurations = await SessionLogService.GetSessionDurationsBySessionIdsAsync(sessionIds);
+		}
+		catch (Exception)
+		{
+			_activeSessions = new List<Session>();
+		}
+	}
+
+
+	private string GetSessionStatusClass(SessionStatus status, bool forEmergency = false) =>
+	(status, forEmergency) switch
+	{
+		(SessionStatus.Active, true) => "border-danger",
+		(SessionStatus.Active, false) => "border-success",
+		(SessionStatus.Emergency, _) => "border-danger",
+		(SessionStatus.Monitoring, _) => "border-warning",
+		(SessionStatus.Pause, _) => "border-info",
+		(SessionStatus.Waiting, _) => "border-secondary",
+		(SessionStatus.Completed, _) => "border-dark",
+		(SessionStatus.Cancelled, _) => "border-light",
+		_ => "border-secondary"
+	};
+
+	private string GetSessionStatusBadgeColor(SessionStatus status) => status switch
+	{
+		SessionStatus.Active => "success",
+		SessionStatus.Emergency => "danger",
+		SessionStatus.Monitoring => "warning",
+		SessionStatus.Pause => "info",
+		SessionStatus.Waiting => "secondary",
+		SessionStatus.Completed => "dark",
+		SessionStatus.Cancelled => "light",
+		_ => "secondary"
+	};
+
+
+
+	private string GetSessionDuration(Session session)
+	{
+		var sessionLog = sessionLogDurations.Find(x => x.SessionId == session.Id);
+		var totalLoggedTime = sessionLog?.TotalDuration ?? TimeSpan.Zero;
+		var startTime = sessionLog?.LastStartDate ?? session.StartTime;
+		var duration = DateTime.UtcNow - startTime + totalLoggedTime;
+		//var duration = DateTime.UtcNow - session.StartTime;
+		return $"{duration.Hours:D2}:{duration.Minutes:D2}:{duration.Seconds:D2}";
+	}
+}

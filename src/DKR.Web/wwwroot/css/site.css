@@ -1,0 +1,14 @@
+﻿@keyframes blink-border {
+    0%, 100% {
+        border-color: transparent;
+    }
+
+    50% {
+        border-color: red; /* Change to your desired color */
+    }
+}
+
+.border-blink {
+    border: 2px solid red; /* Initial border */
+    animation: blink-border 1s infinite; /* Blink every 1 second infinitely */
+}

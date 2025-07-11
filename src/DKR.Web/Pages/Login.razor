@@ -1,0 +1,229 @@
+﻿@page "/login"
+@inject NavigationManager Navigation
+@inject IIdentityProvider IdentityProvider
+@inject IHttpContextAccessor HttpContextAccessor
+@inject AuthenticationStateProvider AuthProvider
+@inject ClientService ClientService
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+
+<PageTitle>Login</PageTitle>
+
+<!-- Light page background + top padding -->
+<div class="bg-light py-5">
+	<div class="container">
+		<div class="row justify-content-center">
+			<div class="col-md-6 col-lg-5">
+
+				<div class="card shadow-sm">
+					<div class="card-body p-4">
+
+						<h2 class="card-title text-center mb-4">
+							<i class="bi bi-box-arrow-in-right me-2"></i>Login
+						</h2>
+
+						@if (!string.IsNullOrEmpty(_error))
+						{
+							<div class="alert alert-danger" role="alert">@_error</div>
+						}
+
+						<EditForm Model="_loginModel" OnValidSubmit="HandleLogin">
+							<DataAnnotationsValidator />
+							<ValidationSummary />
+
+							<div class="mb-3">
+								<label class="form-label" for="username">Benutzername</label>
+								<InputText id="username"
+										   class="form-control"
+										   placeholder="E‑Mail oder Benutzername"
+										   @bind-Value="_loginModel.Username" />
+							</div>
+
+							<div class="mb-3">
+								<label class="form-label" for="password">Passwort</label>
+								<InputText id="password"
+										   type="password"
+										   class="form-control"
+										   placeholder="●●●●●●●●"
+										   @bind-Value="_loginModel.Password" />
+							</div>
+
+							<div class="d-flex justify-content-between align-items-center mb-3">
+								<div class="form-check">
+									<InputCheckbox id="remember"
+												   class="form-check-input"
+												   @bind-Value="_loginModel.Remember" />
+									<label class="form-check-label" for="remember">
+										Angemeldet bleiben
+									</label>
+								</div>
+								<a class="small text-decoration-none" href="/forgot-password">
+									Passwort vergessen?
+								</a>
+							</div>
+
+							<button class="btn btn-primary w-100" type="submit">
+								<i class="bi bi-door-open me-1"></i> Anmelden
+							</button>
+						</EditForm>
+
+					</div>
+				</div>
+
+			</div>
+		</div>
+	</div>
+</div>
+
+@code {
+
+	private readonly LoginModel _loginModel = new();
+	private string? _error;
+	private bool _isLoggingIn;
+
+	private async Task HandleLogin()
+	{
+	    var result = await IdentityProvider.AuthenticateAsync(_loginModel.Username, _loginModel.Password);
+	    if (result.Success && result.UserId != null)
+	    {
+	       Navigation.NavigateTo("/"); // force full reload so Blazor picks up auth cookie
+	    }
+	    else
+	    {
+	        _error = "Login fehlgeschlagen. Bitte prüfen Sie Ihre Zugangsdaten.";
+	    }
+	}
+
+	private async Task HandleLogins()
+	{
+		try
+		{
+			var result = await IdentityProvider.AuthenticateAsync(
+								_loginModel.Username, _loginModel.Password);
+
+			if (!result.Success || result.UserId is null)
+			{
+				_error = "Login fehlgeschlagen. Bitte prüfen Sie Ihre Zugangsdaten.";
+				return;
+			}
+
+			// --- build claims ---------------------------------------------------
+			var userInfo = await IdentityProvider.GetUserInfoAsync(result.UserId);
+			var claims = new List<Claim>
+		{
+			new(ClaimTypes.NameIdentifier, userInfo.UserId),
+			new(ClaimTypes.Name,           userInfo.Username),
+			new(ClaimTypes.Email,          userInfo.Email ?? string.Empty)
+		};
+			claims.AddRange(userInfo.Roles.Select(r => new Claim(ClaimTypes.Role, r)));
+
+			var claimsIdentity = new ClaimsIdentity(
+				claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
+			var authProps = new AuthenticationProperties
+				{
+					IsPersistent = _loginModel.Remember
+				};
+
+			// --- write the auth‑cookie -----------------------------------------
+			await HttpContextAccessor.HttpContext!.SignInAsync(
+				CookieAuthenticationDefaults.AuthenticationScheme,
+				new ClaimsPrincipal(claimsIdentity),
+				authProps);
+
+			// --- notify Blazor & redirect --------------------------------------
+			if (AuthProvider is DKR.Web.Auth.CookieAuthenticationStateProvider cookieProvider)
+				cookieProvider.NotifyAuthStateChanged();
+
+			Navigation.NavigateTo("/", forceLoad: true);   // full reload
+		}
+		catch (Exception ex)
+		{
+
+			// Generic message for the UI
+			_error = "Beim Anmelden ist ein unerwarteter Fehler aufgetreten.";
+		}
+	}
+
+	private async Task HandleLogines()
+	{
+		_error = null;
+		_isLoggingIn = true;
+		// THIS StateHasChanged() IS THE MOST LIKELY CULPRIT IF IT'S EXECUTING BEFORE SignInAsync
+		// StateHasChanged(); // <--- If this line is uncommented and reached before SignInAsync, it could be the problem.
+
+		if (HttpContextAccessor.HttpContext == null)
+		{
+			_error = "Server context is not available for login.";
+			_isLoggingIn = false;
+			StateHasChanged(); // OK here, as it's an early exit/error.
+			return;
+		}
+
+		try
+		{
+			// These calls should not be implicitly causing a render or writing to response.
+			// If they do, they are fundamentally flawed for this scenario.
+			var result = await IdentityProvider.AuthenticateAsync(_loginModel.Username, _loginModel.Password);
+
+			if (result.Success && result.UserId != null)
+			{
+				var userInfo = await IdentityProvider.GetUserInfoAsync(result.UserId);
+				if (HttpContextAccessor.HttpContext.Response.HasStarted)
+				{
+					Console.Error.WriteLine("CRITICAL ERROR: HTTP Response has already started writing BEFORE SignInAsync!"); _error = "Internal server error: Response already started. Cannot log in."; _isLoggingIn = false; StateHasChanged(); return; // Exit early if headers are already locked }
+				}
+
+
+				var claims = new List<Claim>
+		{
+			new(ClaimTypes.NameIdentifier, userInfo.UserId),
+			new(ClaimTypes.Name,           userInfo.Username),
+			new(ClaimTypes.Email,          userInfo.Email ?? string.Empty)
+		};
+				claims.AddRange(userInfo.Roles.Select(r => new Claim(ClaimTypes.Role, r)));
+				// ... claims setup ...
+				var claimsIdentity = new ClaimsIdentity(
+					claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
+				var authProps = new AuthenticationProperties
+					{
+						IsPersistent = _loginModel.Remember
+					};
+
+				// --- write the auth‑cookie -----------------------------------------
+				await HttpContextAccessor.HttpContext!.SignInAsync(
+					CookieAuthenticationDefaults.AuthenticationScheme,
+					new ClaimsPrincipal(claimsIdentity),
+					authProps);
+
+
+				// Only after SignInAsync completes should you trigger a navigation.
+				// This 'forceLoad: true' is key to getting a clean new request.
+				Navigation.NavigateTo("/", forceLoad: true);
+			}
+			else
+			{
+				_error = "Login fehlgeschlagen. Bitte prüfen Sie Ihre Zugangsdaten.";
+				_isLoggingIn = false;
+				StateHasChanged(); // OK here, as login failed.
+			}
+		}
+
+		catch (Exception ex)
+		{
+			Console.Error.WriteLine($"Login error: {ex.Message}");
+			_error = "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.";
+			_isLoggingIn = false;
+			StateHasChanged(); // OK here, as login failed.
+		}
+	}
+
+	private sealed class LoginModel
+	{
+		public string Username { get; set; } = string.Empty;
+		public string Password { get; set; } = string.Empty;
+		public bool Remember { get; set; } = true;
+	}
+}

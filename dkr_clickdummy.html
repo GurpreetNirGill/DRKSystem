@@ -1,0 +1,2002 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DKR Management System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        /* Navigation */
+        .nav {
+            background: #4a5568;
+            padding: 0;
+            display: flex;
+            overflow-x: auto;
+        }
+
+        .nav-item {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: white;
+            transition: all 0.3s;
+            white-space: nowrap;
+            font-size: 0.9rem;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: #2d3748;
+            transform: translateY(-2px);
+        }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            padding: 2rem;
+            display: flex;
+            gap: 2rem;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 300px;
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            height: fit-content;
+        }
+
+        .sidebar h3 {
+            margin-bottom: 1rem;
+            color: #4a5568;
+            font-size: 1.1rem;
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4c51bf, #667eea);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-emergency {
+            background: linear-gradient(135deg, #e53e3e, #fc8181);
+            color: white;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Dashboard */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f7fafc, #edf2f7);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 4px solid #4c51bf;
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4c51bf;
+        }
+
+        .stat-label {
+            color: #718096;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #4c51bf;
+            box-shadow: 0 0 0 3px rgba(76, 81, 191, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* Tables */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .table th,
+        .table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .table th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .table tr:hover {
+            background: #f7fafc;
+        }
+
+        /* Status badges */
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .badge-warning {
+            background: #faf089;
+            color: #744210;
+        }
+
+        .badge-danger {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .close {
+            font-size: 1.5rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: #718096;
+        }
+
+        /* Timer */
+        .timer {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #4c51bf;
+            text-align: center;
+            padding: 1rem;
+            background: #f7fafc;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        /* Charts placeholder */
+        .chart-placeholder {
+            height: 300px;
+            background: linear-gradient(45deg, #f7fafc, #edf2f7);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #718096;
+            font-style: italic;
+        }
+
+        .alerts {
+            background: #fed7d7;
+            border-left: 4px solid #e53e3e;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .success-msg {
+            background: #c6f6d5;
+            border-left: 4px solid #38a169;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main {
+                flex-direction: column;
+                padding: 1rem;
+            }
+            
+            .sidebar {
+                width: 100%;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">🏥 DKR Management System</div>
+            <div class="user-info">
+                <span>Dr. Maria Schmidt</span>
+                <span>|</span>
+                <span>DKR Hamburg-Altona</span>
+                <button class="btn btn-secondary" onclick="showModal('settingsModal')">⚙️</button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav">
+            <button class="nav-item active" onclick="showPage('dashboard')">📊 Dashboard</button>
+            <button class="nav-item" onclick="showPage('checkin')">👤 Check-in</button>
+            <button class="nav-item" onclick="showPage('session')">💉 Session</button>
+            <button class="nav-item" onclick="showPage('clients')">📋 Klienten</button>
+            <button class="nav-item" onclick="showPage('harmreduction')">🩺 Harm Reduction</button>
+            <button class="nav-item" onclick="showPage('inventory')">📦 Lager</button>
+            <button class="nav-item" onclick="showPage('reports')">📈 Reports</button>
+            <button class="nav-item" onclick="showPage('export')">📤 Export</button>
+            <button class="nav-item" onclick="showPage('api')">🔗 API</button>
+            <button class="nav-item" onclick="showPage('mobile')">📱 Mobile</button>
+            <button class="nav-item" onclick="showPage('security')">🔒 Security</button>
+            <button class="nav-item" onclick="showPage('settings')">⚙️ System</button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <h3>🚀 Schnellaktionen</h3>
+                <div class="quick-actions">
+                    <button class="btn btn-primary" onclick="showModal('checkinModal')">
+                        ➕ Neuer Check-in
+                    </button>
+                    <button class="btn btn-primary" onclick="showModal('sessionModal')">
+                        💉 Session starten
+                    </button>
+                    <button class="btn btn-secondary" onclick="showPage('harmreduction')">
+                        🩺 Harm Reduction
+                    </button>
+                    <button class="btn btn-emergency" onclick="showModal('emergencyModal')">
+                        🚨 NOTFALL
+                    </button>
+                </div>
+
+                <h3 style="margin-top: 2rem;">📊 Live-Status</h3>
+                <div style="background: #f7fafc; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span>Aktive Sessions:</span>
+                        <strong style="color: #4c51bf;">3</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span>Freie Plätze:</span>
+                        <strong style="color: #38a169;">2</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Warteschlange:</span>
+                        <strong style="color: #d69e2e;">1</strong>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1rem; padding: 1rem; background: #fed7d7; border-radius: 8px;">
+                    <strong>⚠️ Niedrige Bestände:</strong><br>
+                    <small>Naloxon: 3 Einheiten</small><br>
+                    <small>Sterile Spritzen: 12 Stück</small>
+                </div>
+            </aside>
+
+            <!-- Content Area -->
+            <div class="content">
+                <!-- Dashboard Page -->
+                <div id="dashboard" class="page active">
+                    <h1>Dashboard - Übersicht heute</h1>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">47</div>
+                            <div class="stat-label">Konsumvorgänge heute</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">28</div>
+                            <div class="stat-label">Unique Besucher</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">0</div>
+                            <div class="stat-label">Notfälle heute</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">156</div>
+                            <div class="stat-label">Ausgegeb. Utensilien</div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-top: 2rem;">
+                        <div>
+                            <h3>Konsumvorgänge letzte 7 Tage</h3>
+                            <div class="chart-placeholder">
+                                Verlaufsdiagramm: Konsumvorgänge pro Tag
+                            </div>
+                        </div>
+                        <div>
+                            <h3>Häufigste Substanzen</h3>
+                            <div class="chart-placeholder">
+                                Tortendiagramm: Substanzverteilung
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-top: 2rem;">Aktuelle Sessions</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Platz</th>
+                                <th>Klient-ID</th>
+                                <th>Startzeit</th>
+                                <th>Dauer</th>
+                                <th>Substanz</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Raum 1</td>
+                                <td>KL-2024-0847</td>
+                                <td>14:23</td>
+                                <td>12 Min</td>
+                                <td>Heroin</td>
+                                <td><span class="badge badge-success">Aktiv</span></td>
+                            </tr>
+                            <tr>
+                                <td>Raum 3</td>
+                                <td>KL-2024-0891</td>
+                                <td>14:35</td>
+                                <td>5 Min</td>
+                                <td>Kokain</td>
+                                <td><span class="badge badge-success">Aktiv</span></td>
+                            </tr>
+                            <tr>
+                                <td>Raum 5</td>
+                                <td>KL-2024-0734</td>
+                                <td>14:41</td>
+                                <td>2 Min</td>
+                                <td>Heroin</td>
+                                <td><span class="badge badge-warning">Überwachung</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Check-in Page -->
+                <div id="checkin" class="page">
+                    <h1>Klienten Check-in</h1>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Klient suchen (UUID oder Pseudonym)</label>
+                        <input type="text" class="form-input" placeholder="Eingabe oder Scanner..." id="clientSearch" autocomplete="off">
+                    </div>
+
+                    <div id="newClientForm" style="display: none;">
+                        <h3>Neue Klientin / Neuer Klient</h3>
+                        <div class="success-msg">
+                            ✅ UUID automatisch generiert: <strong>KL-2024-0901</strong>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Geschlecht *</label>
+                                <select class="form-input">
+                                    <option>Männlich</option>
+                                    <option>Weiblich</option>
+                                    <option>Divers</option>
+                                    <option>Keine Angabe</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Geburtsjahr *</label>
+                                <input type="number" class="form-input" placeholder="1985" min="1950" max="2010">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Hauptsubstanz *</label>
+                                <select class="form-input">
+                                    <option>Heroin</option>
+                                    <option>Kokain</option>
+                                    <option>Amphetamine</option>
+                                    <option>Andere Opioide</option>
+                                    <option>Cannabis</option>
+                                    <option>Andere</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Wohnort (PLZ)</label>
+                                <input type="text" class="form-input" placeholder="20357">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Erstbesucher?</label>
+                            <select class="form-input">
+                                <option>Ja - Erstbesuch in DKR</option>
+                                <option>Nein - Bereits bekannt</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Behandlungshistorie</label>
+                            <select class="form-input">
+                                <option>Keine vorherige Behandlung</option>
+                                <option>Entgiftung</option>
+                                <option>Substitution</option>
+                                <option>Entwöhnung</option>
+                                <option>Nachsorge</option>
+                            </select>
+                        </div>
+
+                    <button class="btn btn-primary" onclick="completeCheckin()">
+                        Check-in abschließen
+                    </button>
+                    </div>
+
+                    <div id="existingClient" style="display: none;">
+                        <div class="success-msg">
+                            ✅ Klient gefunden: <strong>KL-2024-0847</strong> | Letzter Besuch: 15.06.2025
+                        </div>
+                        <button class="btn btn-primary" onclick="quickCheckin()">
+                            Schnell-Check-in
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Session Page -->
+                <div id="session" class="page">
+                    <h1>Konsumvorgang dokumentieren</h1>
+
+                    <div class="alerts">
+                        ⚠️ Maximale Verweildauer: 30 Minuten pro Session
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Klient-ID</label>
+                            <input type="text" class="form-input" value="KL-2024-0847" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Raum/Platz</label>
+                            <select class="form-input">
+                                <option>Raum 1</option>
+                                <option>Raum 2</option>
+                                <option>Raum 3</option>
+                                <option>Raum 4</option>
+                                <option>Raum 5</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="timer" id="sessionTimer">
+                        ⏱️ Session-Zeit: 00:00:00
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Substanz *</label>
+                            <select class="form-input">
+                                <option>Heroin (Diamorphin)</option>
+                                <option>Kokain</option>
+                                <option>Crack</option>
+                                <option>Amphetamine</option>
+                                <option>Methamphetamine</option>
+                                <option>Andere</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Applikationsweg *</label>
+                            <select class="form-input">
+                                <option>Intravenös</option>
+                                <option>Inhalativ (Rauchen)</option>
+                                <option>Intranasal (Schnupfen)</option>
+                                <option>Oral</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Ausgegebene Utensilien</label>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                            <label><input type="checkbox" checked> Sterile Spritze (2ml)</label>
+                            <label><input type="checkbox" checked> Sterile Nadel (Orange)</label>
+                            <label><input type="checkbox"> Filter</label>
+                            <label><input type="checkbox"> Löffel</label>
+                            <label><input type="checkbox"> Alkoholtupfer</label>
+                            <label><input type="checkbox"> Tourniquet</label>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Blutdruck (optional)</label>
+                            <input type="text" class="form-input" placeholder="120/80">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Puls (optional)</label>
+                            <input type="number" class="form-input" placeholder="72">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Besonderheiten / Notizen</label>
+                        <textarea class="form-input" rows="3" placeholder="Auffälligkeiten, Beratungsgespräch, etc."></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <button class="btn btn-primary" onclick="completeSession()">
+                            Session beenden
+                        </button>
+                        <button class="btn btn-emergency" onclick="showModal('emergencyModal')">
+                            🚨 NOTFALL
+                        </button>
+                        <button class="btn btn-secondary">
+                            Pausieren
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Clients Page -->
+                <div id="clients" class="page">
+                    <h1>Klientenverwaltung</h1>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                        <input type="text" class="form-input" style="width: 300px;" placeholder="Suche nach UUID, Zeitraum...">
+                        <button class="btn btn-primary">📥 KDS Export</button>
+                    </div>
+
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>UUID</th>
+                                <th>Alter</th>
+                                <th>Geschlecht</th>
+                                <th>Erstbesuch</th>
+                                <th>Letzter Besuch</th>
+                                <th>Sessions</th>
+                                <th>Hauptsubstanz</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>KL-2024-0847</td>
+                                <td>39</td>
+                                <td>M</td>
+                                <td>03.06.2025</td>
+                                <td>18.06.2025</td>
+                                <td>23</td>
+                                <td>Heroin</td>
+                                <td>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                                        Details
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>KL-2024-0734</td>
+                                <td>42</td>
+                                <td>W</td>
+                                <td>01.06.2025</td>
+                                <td>18.06.2025</td>
+                                <td>31</td>
+                                <td>Kokain</td>
+                                <td>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                                        Details
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>KL-2024-0891</td>
+                                <td>28</td>
+                                <td>M</td>
+                                <td>15.06.2025</td>
+                                <td>18.06.2025</td>
+                                <td>4</td>
+                                <td>Amphetamine</td>
+                                <td>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                                        Details
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Harm Reduction Page -->
+                <div id="harmreduction" class="page">
+                    <h1>🩺 Harm Reduction Services</h1>
+                    
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+                        <div>
+                            <h3>📅 Terminverwaltung</h3>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Service-Typ</label>
+                                    <select class="form-input">
+                                        <option>HIV-Schnelltest</option>
+                                        <option>HCV-Schnelltest</option>
+                                        <option>HIV + HCV Kombi-Test</option>
+                                        <option>Wundversorgung</option>
+                                        <option>Venenberatung</option>
+                                        <option>Substitutionsberatung</option>
+                                        <option>Nachsorge-Gespräch</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Klient-ID</label>
+                                    <input type="text" class="form-input" placeholder="KL-2024-XXXX">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Termin</label>
+                                    <input type="datetime-local" class="form-input" value="2025-06-20T10:00">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Fachkraft</label>
+                                    <select class="form-input">
+                                        <option>Dr. Maria Schmidt</option>
+                                        <option>Pfleger Tom Meyer</option>
+                                        <option>Sozialarbeiterin Lisa Weber</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" checked>
+                                    📱 Push-Notification an Klient senden
+                                </label>
+                                <small style="color: #718096;">Automatische Erinnerung 24h und 2h vor Termin</small>
+                            </div>
+                            
+                            <button class="btn btn-primary">📅 Termin buchen</button>
+                            
+                            <h3 style="margin-top: 2rem;">🩹 Akute Wundversorgung</h3>
+                            <div class="alerts">
+                                ⚠️ Notfall-Wundversorgung: Sofortige Dokumentation erforderlich
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Wundart</label>
+                                    <select class="form-input">
+                                        <option>Einstichstelle entzündet</option>
+                                        <option>Abszess</option>
+                                        <option>Venenschaden</option>
+                                        <option>Schnittwunde</option>
+                                        <option>Verbrennung</option>
+                                        <option>Andere</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Schweregrad</label>
+                                    <select class="form-input">
+                                        <option>Leicht (ambulant)</option>
+                                        <option>Mittel (Überwachung)</option>
+                                        <option>Schwer (Klinik-Einweisung)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Durchgeführte Maßnahmen</label>
+                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                                    <label><input type="checkbox"> Wundreinigung</label>
+                                    <label><input type="checkbox"> Desinfektion</label>
+                                    <label><input type="checkbox"> Verbandswechsel</label>
+                                    <label><input type="checkbox"> Antibiotika-Salbe</label>
+                                    <label><input type="checkbox"> Schmerzmedikation</label>
+                                    <label><input type="checkbox"> Tetanus-Auffrischung</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3>🔔 Heute geplant</h3>
+                            <div style="background: #f7fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <div style="font-weight: 500;">10:00 - HIV-Test</div>
+                                <div style="color: #718096; font-size: 0.9rem;">KL-2024-0847</div>
+                                <div style="color: #718096; font-size: 0.8rem;">Dr. Schmidt</div>
+                                <button class="btn btn-secondary" style="margin-top: 0.5rem; padding: 0.25rem 0.75rem; font-size: 0.8rem;">
+                                    🔔 Erinnerung senden
+                                </button>
+                            </div>
+                            
+                            <div style="background: #f7fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <div style="font-weight: 500;">14:00 - Wundkontrolle</div>
+                                <div style="color: #718096; font-size: 0.9rem;">KL-2024-0734</div>
+                                <div style="color: #718096; font-size: 0.8rem;">Pfleger Meyer</div>
+                                <span class="badge badge-warning" style="margin-top: 0.5rem;">Fällig</span>
+                            </div>
+                            
+                            <div style="background: #f7fafc; padding: 1rem; border-radius: 8px;">
+                                <div style="font-weight: 500;">16:30 - Substitutionsberatung</div>
+                                <div style="color: #718096; font-size: 0.9rem;">KL-2024-0891</div>
+                                <div style="color: #718096; font-size: 0.8rem;">SW Weber</div>
+                                <span class="badge badge-success" style="margin-top: 0.5rem;">Bestätigt</span>
+                            </div>
+                            
+                            <h3 style="margin-top: 2rem;">📊 Service-Statistiken</h3>
+                            <div style="background: #f7fafc; padding: 1rem; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>HIV-Tests (Monat):</span>
+                                    <strong>47</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>HCV-Tests (Monat):</span>
+                                    <strong>52</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>Wundversorgungen:</span>
+                                    <strong>23</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>Substitutions-Beratung:</span>
+                                    <strong>18</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="inventory" class="page">
+                    <h1>Lagerverwaltung</h1>
+
+                    <div class="alerts">
+                        ⚠️ 2 Artikel unter Mindestbestand!
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+                        <button class="btn btn-primary">➕ Wareneingang</button>
+                        <button class="btn btn-secondary">📊 Inventur</button>
+                        <button class="btn btn-secondary">📋 Bestellung generieren</button>
+                    </div>
+
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Artikel</th>
+                                <th>Aktueller Bestand</th>
+                                <th>Mindestbestand</th>
+                                <th>Letzter Zugang</th>
+                                <th>Ablaufdatum</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Sterile Spritzen 2ml</td>
+                                <td>12</td>
+                                <td>50</td>
+                                <td>15.06.2025</td>
+                                <td>06/2027</td>
+                                <td><span class="badge badge-danger">Kritisch</span></td>
+                            </tr>
+                            <tr>
+                                <td>Nadeln Orange (25G)</td>
+                                <td>45</td>
+                                <td>40</td>
+                                <td>15.06.2025</td>
+                                <td>12/2026</td>
+                                <td><span class="badge badge-success">OK</span></td>
+                            </tr>
+                            <tr>
+                                <td>Naloxon 0.4mg</td>
+                                <td>3</td>
+                                <td>10</td>
+                                <td>12.06.2025</td>
+                                <td>09/2025</td>
+                                <td><span class="badge badge-danger">Kritisch</span></td>
+                            </tr>
+                            <tr>
+                                <td>Alkoholtupfer</td>
+                                <td>127</td>
+                                <td>50</td>
+                                <td>10.06.2025</td>
+                                <td>03/2026</td>
+                                <td><span class="badge badge-success">OK</span></td>
+                            </tr>
+                            <tr>
+                                <td>Filter</td>
+                                <td>89</td>
+                                <td>30</td>
+                                <td>10.06.2025</td>
+                                <td>-</td>
+                                <td><span class="badge badge-success">OK</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Reports Page -->
+                <div id="reports" class="page">
+                    <h1>Berichte und Auswertungen</h1>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                        <div class="stat-card">
+                            <h3>Monatsbericht Juni 2025</h3>
+                            <p>Standardbericht für Landesbehörde</p>
+                            <button class="btn btn-primary" style="margin-top: 1rem;">📄 PDF generieren</button>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Quartalsbericht Q2/2025</h3>
+                            <p>Umfassende Auswertung</p>
+                            <button class="btn btn-primary" style="margin-top: 1rem;">📊 Excel Export</button>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Notfall-Report</h3>
+                            <p>Überdosierungen & Zwischenfälle</p>
+                            <button class="btn btn-primary" style="margin-top: 1rem;">🚨 Anzeigen</button>
+                        </div>
+                    </div>
+
+                    <h3>Benutzerdefinierte Auswertung</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Zeitraum von</label>
+                            <input type="date" class="form-input" value="2025-06-01">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Zeitraum bis</label>
+                            <input type="date" class="form-input" value="2025-06-18">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Filter nach Substanz</label>
+                            <select class="form-input">
+                                <option>Alle Substanzen</option>
+                                <option>Heroin</option>
+                                <option>Kokain</option>
+                                <option>Amphetamine</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Filter nach Geschlecht</label>
+                            <select class="form-input">
+                                <option>Alle</option>
+                                <option>Männlich</option>
+                                <option>Weiblich</option>
+                                <option>Divers</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary">🔍 Auswertung erstellen</button>
+
+                    <h3 style="margin-top: 2rem;">Schnellstatistiken (letzte 30 Tage)</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">847</div>
+                            <div class="stat-label">Konsumvorgänge gesamt</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">234</div>
+                            <div class="stat-label">Unique Nutzer</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">2</div>
+                            <div class="stat-label">Notfälle</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">28,3</div>
+                            <div class="stat-label">⌀ Sessions/Tag</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Export Page -->
+                <div id="export" class="page">
+                    <h1>Datenexport (KDS & TDI)</h1>
+
+                    <div class="success-msg">
+                        ✅ Alle Datenvalidierungen bestanden. Export bereit.
+                    </div>
+
+                    <h3>Deutscher Kerndatensatz (KDS 3.0)</h3>
+                    <div style="background: #f7fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Berichtszeitraum</label>
+                                <select class="form-input">
+                                    <option>Q2 2025 (April - Juni)</option>
+                                    <option>Q1 2025 (Januar - März)</option>
+                                    <option>Gesamtjahr 2024</option>
+                                    <option>Benutzerdefiniert</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Format</label>
+                                <select class="form-input">
+                                    <option>XML (KDS-Standard)</option>
+                                    <option>CSV (Excel-kompatibel)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary">📥 KDS Export durchführen</button>
+                    </div>
+
+                    <h3>Treatment Demand Indicator (TDI 3.0)</h3>
+                    <div style="background: #f7fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">REITOX Focal Point</label>
+                                <select class="form-input">
+                                    <option>Deutschland (IFT München)</option>
+                                    <option>Test-Umgebung</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Übertragungsweg</label>
+                                <select class="form-input">
+                                    <option>HTTPS REST-API</option>
+                                    <option>CSV-Upload</option>
+                                    <option>Datei-Download</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary">🌍 TDI Export an EMCDDA</button>
+                    </div>
+
+                    <h3>Export-Historie</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Datum</th>
+                                <th>Typ</th>
+                                <th>Zeitraum</th>
+                                <th>Status</th>
+                                <th>Datensätze</th>
+                                <th>Download</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>18.06.2025 14:30</td>
+                                <td>KDS XML</td>
+                                <td>Q2 2025</td>
+                                <td><span class="badge badge-success">Erfolgreich</span></td>
+                                <td>1.247</td>
+                                <td><button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">💾</button></td>
+                            </tr>
+                            <tr>
+                                <td>15.06.2025 09:15</td>
+                                <td>TDI CSV</td>
+                                <td>Mai 2025</td>
+                                <td><span class="badge badge-success">Übertragen</span></td>
+                                <td>423</td>
+                                <td><button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">💾</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- API Page -->
+                <div id="api" class="page">
+                    <h1>🔗 API & Schnittstellen</h1>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <h3>🏥 FHIR R4 Integration</h3>
+                            <div style="background: #f7fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <h4>Patient Resource</h4>
+                                <pre style="background: #2d3748; color: #e2e8f0; padding: 1rem; border-radius: 4px; font-size: 0.8rem; overflow-x: auto;">{
+  "resourceType": "Patient",
+  "id": "KL-2024-0847",
+  "identifier": [{
+    "use": "usual",
+    "system": "https://dkr-system.de/uuid",
+    "value": "KL-2024-0847"
+  }],
+  "gender": "male",
+  "birthDate": "1985"
+}</pre>
+                                <button class="btn btn-secondary">📋 Vollständiges Schema</button>
+                            </div>
+                            
+                            <h4>Observation (Konsumvorgang)</h4>
+                            <div style="background: #f7fafc; padding: 1rem; border-radius: 8px;">
+                                <pre style="background: #2d3748; color: #e2e8f0; padding: 1rem; border-radius: 4px; font-size: 0.8rem; overflow-x: auto;">{
+  "resourceType": "Observation", 
+  "status": "final",
+  "code": {
+    "coding": [{
+      "system": "http://snomed.info/sct",
+      "code": "228388006",
+      "display": "Substance use"
+    }]
+  },
+  "valueCodeableConcept": {
+    "text": "Heroin i.v."
+  }
+}</pre>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3>🔗 HL7 ADT Messages</h3>
+                            <div style="background: #f7fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <h4>Notfall-Übertragung an Klinik</h4>
+                                <pre style="background: #2d3748; color: #e2e8f0; padding: 1rem; border-radius: 4px; font-size: 0.8rem; overflow-x: auto;">MSH|^~\&|DKR-SYS|HAM-ALTONA|KIS|UKE||ADT^A04^ADT_A01|12345|P|2.5
+EVN||202506181430|||Dr.Schmidt
+PID|1||KL-2024-0847^^^DKR||ANONYM^|||M|||||||||||||||||||||||
+PV1|1|E|NOTF||||^SCHMIDT^MARIA^|||DRUG||||||||||||||||||||||OVERDOSE</pre>
+                                <button class="btn btn-secondary">📤 Test senden</button>
+                            </div>
+                            
+                            <h3>🌐 REST API Endpoints</h3>
+                            <div style="background: #f7fafc; padding: 1rem; border-radius: 8px;">
+                                <div style="margin-bottom: 0.5rem;"><strong>GET</strong> /api/v1/sessions/active</div>
+                                <div style="margin-bottom: 0.5rem;"><strong>POST</strong> /api/v1/emergency/alert</div>
+                                <div style="margin-bottom: 0.5rem;"><strong>GET</strong> /api/v1/export/kds/{period}</div>
+                                <div style="margin-bottom: 0.5rem;"><strong>POST</strong> /api/v1/export/tdi/emcdda</div>
+                                <div style="margin-bottom: 0.5rem;"><strong>GET</strong> /api/v1/inventory/alerts</div>
+                                <button class="btn btn-secondary">📖 API Dokumentation</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h3 style="margin-top: 2rem;">🔄 Synchronisation & Integration</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+                        <div class="stat-card">
+                            <h4>🏥 KIS Integration</h4>
+                            <p>Krankenhaus-Informationssystem</p>
+                            <div style="color: #38a169;">✅ UKE Hamburg verbunden</div>
+                            <div style="color: #d69e2e;">⚠️ AK Altona - Verbindung prüfen</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h4>💊 Substitutions-Software</h4>
+                            <p>PSS (Programm Substitutionsbehandlung)</p>
+                            <div style="color: #38a169;">✅ Bi-direktionale Sync</div>
+                            <div style="color: #718096;">Letzter Abgleich: 18.06.2025 14:30</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h4>📊 REITOX Portal</h4>
+                            <p>Automatischer TDI-Upload</p>
+                            <div style="color: #38a169;">✅ API-Key aktiv</div>
+                            <div style="color: #718096;">Nächster Upload: 01.07.2025</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Page -->
+                <div id="mobile" class="page">
+                    <h1>📱 Mobile App - Offline First</h1>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <h3>📲 App-Features</h3>
+                            <div class="success-msg">
+                                ✅ Offline-First Architektur implementiert
+                            </div>
+                            
+                            <div style="background: #f7fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <h4>🔄 Synchronisation Status</h4>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>Tablet Raum 1:</span>
+                                    <span style="color: #38a169;">✅ Online</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>Tablet Raum 3:</span>
+                                    <span style="color: #d69e2e;">⚠️ Offline (12 Min)</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>Mobile Supervisor:</span>
+                                    <span style="color: #38a169;">✅ Online</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>Warteschlange:</span>
+                                    <span style="color: #4c51bf;">3 Datensätze</span>
+                                </div>
+                            </div>
+                            
+                            <h4>📋 Offline-Funktionen</h4>
+                            <div style="display: grid; grid-template-columns: 1fr; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" checked disabled>
+                                    ✅ Session-Dokumentation
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" checked disabled>
+                                    ✅ Notfall-Protokoll
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" checked disabled>
+                                    ✅ Check-in/Check-out
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" checked disabled>
+                                    ✅ Lager-Entnahme
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" disabled>
+                                    ❌ Reports (nur online)
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" disabled>
+                                    ❌ KDS/TDI Export (nur online)
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3>🔧 Geräte-Management</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Gerät</th>
+                                        <th>Typ</th>
+                                        <th>Status</th>
+                                        <th>Letzte Sync</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>TAB-001</td>
+                                        <td>iPad Pro</td>
+                                        <td><span class="badge badge-success">Online</span></td>
+                                        <td>14:45</td>
+                                    </tr>
+                                    <tr>
+                                        <td>TAB-003</td>
+                                        <td>Samsung Tab</td>
+                                        <td><span class="badge badge-warning">Offline</span></td>
+                                        <td>14:33</td>
+                                    </tr>
+                                    <tr>
+                                        <td>MOB-SUP</td>
+                                        <td>iPhone 14</td>
+                                        <td><span class="badge badge-success">Online</span></td>
+                                        <td>14:44</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <h3 style="margin-top: 2rem;">🔄 Konfliktauflösung</h3>
+                            <div style="background: #fed7d7; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <strong>⚠️ Sync-Konflikt erkannt</strong><br>
+                                <small>Session KL-2024-0847 wurde parallel auf TAB-001 und TAB-003 bearbeitet</small><br>
+                                <button class="btn btn-secondary" style="margin-top: 0.5rem; padding: 0.25rem 0.75rem; font-size: 0.8rem;">
+                                    🔧 Konflikt lösen
+                                </button>
+                            </div>
+                            
+                            <h4>📊 Sync-Statistiken</h4>
+                            <div style="background: #f7fafc; padding: 1rem; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>Heute synchronisiert:</span>
+                                    <strong>247 Datensätze</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>In Warteschlange:</span>
+                                    <strong>3 Datensätze</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>Konflikte heute:</span>
+                                    <strong>1</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>Verfügbarkeit:</span>
+                                    <strong style="color: #38a169;">99.7%</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Page -->
+                <div id="security" class="page">
+                    <h1>🔒 Security & Compliance</h1>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                        <div class="stat-card">
+                            <h3>🛡️ Security Status</h3>
+                            <div style="color: #38a169; font-size: 1.2rem; margin: 0.5rem 0;">✅ Alle Systeme sicher</div>
+                            <div style="font-size: 0.9rem; color: #718096;">Letzter Pen-Test: 15.05.2025</div>
+                            <div style="font-size: 0.9rem; color: #718096;">Nächster Scan: 20.06.2025</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>🔐 Verschlüsselung</h3>
+                            <div style="color: #38a169;">✅ TLS 1.3 (Transport)</div>
+                            <div style="color: #38a169;">✅ AES-256 (at-rest)</div>
+                            <div style="color: #38a169;">✅ RSA-4096 (Signaturen)</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>📋 Compliance</h3>
+                            <div style="color: #38a169;">✅ DSGVO-konform</div>
+                            <div style="color: #38a169;">✅ ISO 27001</div>
+                            <div style="color: #d69e2e;">⚠️ NIS-2 (in Umsetzung)</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <h3>🔍 Penetration Test Report</h3>
+                            <div style="background: #f7fafc; padding: 1.5rem; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                    <span><strong>Letzter Test:</strong> 15.05.2025</span>
+                                    <span><strong>Durchgeführt von:</strong> CyberSec GmbH</span>
+                                </div>
+                                
+                                <h4>Ergebnisse:</h4>
+                                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
+                                    <div style="text-align: center; padding: 0.5rem; background: #c6f6d5; border-radius: 4px;">
+                                        <div style="font-weight: bold; color: #22543d;">0</div>
+                                        <div style="font-size: 0.8rem;">Critical</div>
+                                    </div>
+                                    <div style="text-align: center; padding: 0.5rem; background: #c6f6d5; border-radius: 4px;">
+                                        <div style="font-weight: bold; color: #22543d;">0</div>
+                                        <div style="font-size: 0.8rem;">High</div>
+                                    </div>
+                                    <div style="text-align: center; padding: 0.5rem; background: #faf089; border-radius: 4px;">
+                                        <div style="font-weight: bold; color: #744210;">2</div>
+                                        <div style="font-size: 0.8rem;">Medium</div>
+                                    </div>
+                                    <div style="text-align: center; padding: 0.5rem; background: #bee3f8; border-radius: 4px;">
+                                        <div style="font-weight: bold; color: #2a4365;">5</div>
+                                        <div style="font-size: 0.8rem;">Low</div>
+                                    </div>
+                                </div>
+                                
+                                <button class="btn btn-secondary">📄 Vollständigen Report anzeigen</button>
+                            </div>
+                            
+                            <h3 style="margin-top: 2rem;">👥 Benutzerverwaltung</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Benutzer</th>
+                                        <th>Rolle</th>
+                                        <th>2FA</th>
+                                        <th>Letzter Login</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Dr. M. Schmidt</td>
+                                        <td>Admin</td>
+                                        <td><span class="badge badge-success">Aktiv</span></td>
+                                        <td>18.06.2025 14:20</td>
+                                    </tr>
+                                    <tr>
+                                        <td>T. Meyer</td>
+                                        <td>Fachkraft</td>
+                                        <td><span class="badge badge-success">Aktiv</span></td>
+                                        <td>18.06.2025 08:15</td>
+                                    </tr>
+                                    <tr>
+                                        <td>L. Weber</td>
+                                        <td>Sozialarbeit</td>
+                                        <td><span class="badge badge-danger">Inaktiv</span></td>
+                                        <td>17.06.2025 16:30</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div>
+                            <h3>📊 Audit Trail</h3>
+                            <div style="background: #f7fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <h4>🔒 WORM-Logfiles (Write Once, Read Many)</h4>
+                                <div style="color: #38a169; margin-bottom: 0.5rem;">✅ Manipulationsschutz aktiv</div>
+                                <div style="color: #718096; font-size: 0.9rem;">Blockchain-basierte Integrität</div>
+                            </div>
+                            
+                            <h4>Aktuelle Aktivitäten:</h4>
+                            <div style="max-height: 300px; overflow-y: auto; background: #f7fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem;">
+                                <div>2025-06-18 14:45:23 | USER:schmidt | ACTION:session_start | CLIENT:KL-2024-0847 | IP:192.168.1.45</div>
+                                <div>2025-06-18 14:44:12 | USER:meyer | ACTION:inventory_check | ITEM:naloxon | IP:192.168.1.23</div>
+                                <div>2025-06-18 14:43:01 | USER:system | ACTION:backup_complete | SIZE:247MB | STATUS:success</div>
+                                <div>2025-06-18 14:42:33 | USER:schmidt | ACTION:export_kds | PERIOD:Q2-2025 | STATUS:success</div>
+                                <div>2025-06-18 14:41:18 | USER:weber | ACTION:login_failed | IP:192.168.1.67 | REASON:invalid_2fa</div>
+                                <div>2025-06-18 14:40:45 | USER:meyer | ACTION:client_checkin | CLIENT:KL-2024-0891 | STATUS:success</div>
+                                <div>2025-06-18 14:39:12 | USER:system | ACTION:sync_mobile | DEVICE:TAB-003 | CONFLICTS:1</div>
+                            </div>
+                            
+                            <h3 style="margin-top: 2rem;">🎯 Feld-Level Permissions</h3>
+                            <div style="background: #f7fafc; padding: 1rem; border-radius: 8px;">
+                                <h4>Dr. Schmidt (Admin):</h4>
+                                <div style="color: #38a169;">✅ Alle Felder (Lesen/Schreiben)</div>
+                                <div style="color: #38a169;">✅ Export-Funktionen</div>
+                                <div style="color: #38a169;">✅ System-Konfiguration</div>
+                                
+                                <h4 style="margin-top: 1rem;">T. Meyer (Fachkraft):</h4>
+                                <div style="color: #38a169;">✅ Session-Dokumentation</div>
+                                <div style="color: #d69e2e;">⚠️ KDS-Export (nur Lesen)</div>
+                                <div style="color: #e53e3e;">❌ System-Einstellungen</div>
+                                
+                                <h4 style="margin-top: 1rem;">L. Weber (Sozialarbeit):</h4>
+                                <div style="color: #38a169;">✅ Harm Reduction Services</div>
+                                <div style="color: #38a169;">✅ Terminverwaltung</div>
+                                <div style="color: #e53e3e;">❌ Substanz-Details</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="settings" class="page">
+                    <h1>Systemeinstellungen</h1>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                        <div>
+                            <h3>🏥 Einrichtung</h3>
+                            <div class="form-group">
+                                <label class="form-label">Einrichtungsname</label>
+                                <input type="text" class="form-input" value="DKR Hamburg-Altona">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Bundesland</label>
+                                <select class="form-input">
+                                    <option>Hamburg</option>
+                                    <option>Nordrhein-Westfalen</option>
+                                    <option>Berlin</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Kapazität (Plätze)</label>
+                                <input type="number" class="form-input" value="5">
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3>⚙️ System</h3>
+                            <div class="form-group">
+                                <label class="form-label">Session-Timeout</label>
+                                <select class="form-input">
+                                    <option>30 Minuten</option>
+                                    <option>45 Minuten</option>
+                                    <option>60 Minuten</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Sprache / Language</label>
+                                <select class="form-input" onchange="changeLanguage(this.value)">
+                                    <option value="de">🇩🇪 Deutsch</option>
+                                    <option value="en">🇬🇧 English</option>
+                                    <option value="fr">🇫🇷 Français</option>
+                                    <option value="es">🇪🇸 Español</option>
+                                    <option value="it">🇮🇹 Italiano</option>
+                                    <option value="nl">🇳🇱 Nederlands</option>
+                                    <option value="pt">🇵🇹 Português</option>
+                                    <option value="pl">🇵🇱 Polski</option>
+                                    <option value="cs">🇨🇿 Čeština</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Zeitzone</label>
+                                <select class="form-input">
+                                    <option>Europe/Berlin</option>
+                                    <option>Europe/Vienna</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3>🔒 Sicherheit</h3>
+                            <div class="form-group">
+                                <button class="btn btn-secondary">🔑 Passwort ändern</button>
+                            </div>
+                            <div class="form-group">
+                                <button class="btn btn-secondary">📱 2FA konfigurieren</button>
+                            </div>
+                            <div class="form-group">
+                                <button class="btn btn-secondary">📋 Audit-Log anzeigen</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3>📊 Datenexport</h3>
+                            <div class="form-group">
+                                <label class="form-label">Auto-Export KDS</label>
+                                <select class="form-input">
+                                    <option>Monatlich</option>
+                                    <option>Quartalsweise</option>
+                                    <option>Manuell</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">REITOX API-Key</label>
+                                <input type="password" class="form-input" value="••••••••••••••••">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 2rem; padding: 1.5rem; background: #fed7d7; border-radius: 8px;">
+                        <h3>⚠️ Datenarchivierung</h3>
+                        <p>Automatische Löschung nach 10 Jahren (DSGVO-konform)</p>
+                        <p><strong>Nächste Archivierung:</strong> 127 Datensätze von 2015 am 31.12.2025</p>
+                        <button class="btn btn-secondary">🗂️ Archiv verwalten</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Check-in Modal -->
+    <div id="checkinModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Schnell Check-in</h2>
+                <button class="close" onclick="hideModal('checkinModal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Klient-ID scannen oder eingeben</label>
+                <input type="text" class="form-input" placeholder="Scanner oder manuelle Eingabe...">
+            </div>
+                                <button class="btn btn-primary" onclick="hideModal('checkinModal'); alert('Check-in durchgeführt!');">Check-in durchführen</button>
+        </div>
+    </div>
+
+    <!-- Session Modal -->
+    <div id="sessionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Neue Session starten</h2>
+                <button class="close" onclick="hideModal('sessionModal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Klient auswählen</label>
+                <select class="form-input">
+                    <option>KL-2024-0847 (im Wartebereich)</option>
+                    <option>Neuen Klient anlegen...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Raum zuweisen</label>
+                <select class="form-input">
+                    <option>Raum 2 (verfügbar)</option>
+                    <option>Raum 4 (verfügbar)</option>
+                </select>
+            </div>
+                                <button class="btn btn-primary" onclick="hideModal('sessionModal'); showPage('session');">Session starten</button>
+        </div>
+    </div>
+
+    <!-- Emergency Modal -->
+    <div id="emergencyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="color: #e53e3e;">🚨 NOTFALL-PROTOKOLL</h2>
+                <button class="close" onclick="hideModal('emergencyModal')">&times;</button>
+            </div>
+            <div class="alerts">
+                <strong>Notfall erkannt!</strong> Automatische Benachrichtigung der Rettungskräfte eingeleitet.
+            </div>
+            <div class="form-group">
+                <label class="form-label">Art des Notfalls</label>
+                <select class="form-input">
+                    <option>Überdosierung</option>
+                    <option>Bewusstlosigkeit</option>
+                    <option>Krampfanfall</option>
+                    <option>Atemstillstand</option>
+                    <option>Verletzung</option>
+                    <option>Psychischer Notfall</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Klient-ID</label>
+                <input type="text" class="form-input" value="KL-2024-0734">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Sofortmaßnahmen</label>
+                <div>
+                    <label><input type="checkbox"> Naloxon verabreicht</label><br>
+                    <label><input type="checkbox"> Stabile Seitenlage</label><br>
+                    <label><input type="checkbox"> Beatmung eingeleitet</label><br>
+                    <label><input type="checkbox"> Rettungsdienst alarmiert</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Notizen</label>
+                <textarea class="form-input" rows="3" placeholder="Zeitverlauf, Symptome, durchgeführte Maßnahmen..."></textarea>
+            </div>
+                            <button class="btn btn-emergency" onclick="hideModal('emergencyModal'); alert('✅ Notfall-Meldung wurde an die Behörden übermittelt.');">📞 Meldung abschließen</button>
+        </div>
+    </div>
+
+    <!-- Wareneingang Modal -->
+    <div id="wareneingang" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📦 Wareneingang & Chargen-Erfassung</h2>
+                <button class="close" onclick="hideModal('wareneingang')">&times;</button>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Artikel</label>
+                    <select class="form-input">
+                        <option>Sterile Spritzen 2ml</option>
+                        <option>Nadeln Orange (25G)</option>
+                        <option>Naloxon 0.4mg</option>
+                        <option>HIV-Schnelltests</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Menge</label>
+                    <input type="number" class="form-input" placeholder="100">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Chargen-Nummer</label>
+                    <input type="text" class="form-input" placeholder="CH-2025-XXXX">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ablaufdatum</label>
+                    <input type="date" class="form-input">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Lieferant</label>
+                <select class="form-input">
+                    <option>BD Medical</option>
+                    <option>Terumo</option>
+                    <option>B.Braun</option>
+                    <option>Pfizer</option>
+                    <option>Abbott</option>
+                </select>
+            </div>
+            <button class="btn btn-primary">✅ Wareneingang buchen</button>
+        </div>
+    </div>
+
+    <!-- Chargen Details Modal -->
+    <div id="chargenDetails" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔍 Chargen-Details: CH-2025-0347</h2>
+                <button class="close" onclick="hideModal('chargenDetails')">&times;</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <strong>Artikel:</strong> Sterile Spritzen 2ml<br>
+                    <strong>Lieferant:</strong> BD Medical<br>
+                    <strong>Eingangsdatum:</strong> 15.06.2025<br>
+                    <strong>Ablaufdatum:</strong> 15.06.2027<br>
+                    <strong>Ursprungsmenge:</strong> 500 Stück
+                </div>
+                <div>
+                    <strong>Aktueller Bestand:</strong> 12 Stück<br>
+                    <strong>Verbraucht:</strong> 488 Stück<br>
+                    <strong>Status:</strong> <span class="badge badge-danger">Kritisch</span><br>
+                    <strong>Lagerort:</strong> Schrank A, Fach 2<br>
+                    <strong>Temperatur:</strong> Raumtemperatur
+                </div>
+            </div>
+            <h4 style="margin-top: 1rem;">Verbrauchshistorie:</h4>
+            <div style="max-height: 150px; overflow-y: auto; background: #f7fafc; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem;">
+                18.06.2025 - 15 Stück ausgegeben<br>
+                17.06.2025 - 23 Stück ausgegeben<br>
+                16.06.2025 - 18 Stück ausgegeben<br>
+                15.06.2025 - 19 Stück ausgegeben<br>
+            </div>
+            <button class="btn btn-secondary">📋 Vollständige Historie</button>
+        </div>
+    </div>
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Benutzereinstellungen</h2>
+                <button class="close" onclick="hideModal('settingsModal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Anzeigename</label>
+                <input type="text" class="form-input" value="Dr. Maria Schmidt">
+            </div>
+            <div class="form-group">
+                <label class="form-label">E-Mail</label>
+                <input type="email" class="form-input" value="m.schmidt@dkr-hamburg.de">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Rolle</label>
+                <input type="text" class="form-input" value="Leitende Ärztin" readonly>
+            </div>
+            <button class="btn btn-primary" onclick="hideModal('settingsModal'); alert('✅ Einstellungen wurden gespeichert.');">Änderungen speichern</button>
+        </div>
+    </div>
+
+    <!-- Barcode Scanner Modal -->
+    <div id="barcodeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📷 Barcode Scanner wird geladen...</h2>
+                <button class="close" onclick="hideModal('barcodeModal')">&times;</button>
+            </div>
+            <div style="text-align: center; padding: 2rem;">
+                <div style="color: #718096;">Kamera wird initialisiert...</div>
+            </div>
+        </div>
+    </div>
+        // Page Navigation - SIMPLIFIED and WORKING
+        function showPage(pageId) {
+            try {
+                // Hide all pages
+                document.querySelectorAll('.page').forEach(page => {
+                    page.classList.remove('active');
+                });
+                
+                // Remove active class from nav items
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // Show selected page
+                const targetPage = document.getElementById(pageId);
+                if (targetPage) {
+                    targetPage.classList.add('active');
+                }
+                
+                // Add active class to clicked nav item
+                if (window.event && window.event.target) {
+                    window.event.target.classList.add('active');
+                }
+                
+                // Initialize search functionality for checkin page
+                if (pageId === 'checkin') {
+                    setTimeout(initializeSearchFunctionality, 100);
+                }
+                
+            } catch (error) {
+                console.error('Error in showPage:', error);
+            }
+        }
+
+        // Modal Functions - SIMPLIFIED
+        function showModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('active');
+            }
+        }
+
+        function hideModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+
+        // Search Functions with error handling - REMOVED DUPLICATE
+        // (Moved to initializeSearchFunctionality function above)
+
+        // Check-in Functions with proper error handling
+        function completeCheckin() {
+            try {
+                alert('✅ Check-in erfolgreich!\nNeue UUID: KL-2024-0901\nKlient kann nun eine Session beginnen.');
+                showPage('session');
+            } catch (error) {
+                console.error('Error in completeCheckin:', error);
+            }
+        }
+
+        function quickCheckin() {
+            try {
+                alert('✅ Schnell-Check-in erfolgreich!\nKL-2024-0847 ist bereit für eine neue Session.');
+                showPage('session');
+            } catch (error) {
+                console.error('Error in quickCheckin:', error);
+            }
+        }
+
+        // Session Functions with error handling
+        function completeSession() {
+            try {
+                alert('✅ Session erfolgreich beendet!\nDaten wurden automatisch gespeichert und für KDS/TDI-Export vorbereitet.');
+                showPage('dashboard');
+            } catch (error) {
+                console.error('Error in completeSession:', error);
+            }
+        }
+
+        // Initialize search functionality - SIMPLIFIED
+        function initializeSearchFunctionality() {
+            const clientSearchInput = document.getElementById('clientSearch');
+            if (clientSearchInput) {
+                clientSearchInput.addEventListener('input', function(e) {
+                    const value = e.target.value;
+                    const existingClient = document.getElementById('existingClient');
+                    const newClientForm = document.getElementById('newClientForm');
+                    
+                    if (value.length > 3) {
+                        if (value.includes('0847')) {
+                            if (existingClient) existingClient.style.display = 'block';
+                            if (newClientForm) newClientForm.style.display = 'none';
+                        } else {
+                            if (newClientForm) newClientForm.style.display = 'block';
+                            if (existingClient) existingClient.style.display = 'none';
+                        }
+                    } else {
+                        if (existingClient) existingClient.style.display = 'none';
+                        if (newClientForm) newClientForm.style.display = 'none';
+                    }
+                });
+            }
+        }
+
+        // Timer Simulation with error handling
+        let sessionTime = 0;
+        const timerInterval = setInterval(() => {
+            const timer = document.getElementById('sessionTimer');
+            const sessionPage = document.getElementById('session');
+            
+            if (timer && sessionPage && sessionPage.classList.contains('active')) {
+                sessionTime++;
+                const minutes = Math.floor(sessionTime / 60);
+                const seconds = sessionTime % 60;
+                timer.innerHTML = `⏱️ Session-Zeit: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:00`;
+            }
+        }, 1000);
+
+        // Initialize all functionality when DOM is ready - SIMPLIFIED
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🏥 DKR Management System loaded successfully!');
+            
+            // Initialize search functionality
+            initializeSearchFunctionality();
+            
+            // Close modals when clicking outside
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        modal.classList.remove('active');
+                    }
+                });
+            });
+        });
+
+        // Keyboard shortcuts with proper error handling
+        document.addEventListener('keydown', function(e) {
+            try {
+                if (e.ctrlKey) {
+                    switch(e.key) {
+                        case '1':
+                            e.preventDefault();
+                            showPage('dashboard');
+                            updateActiveNavItem(0);
+                            break;
+                        case '2':
+                            e.preventDefault();
+                            showPage('checkin');
+                            updateActiveNavItem(1);
+                            break;
+                        case '3':
+                            e.preventDefault();
+                            showPage('session');
+                            updateActiveNavItem(2);
+                            break;
+                        case 'e':
+                        case 'E':
+                            e.preventDefault();
+                            showModal('emergencyModal');
+                            break;
+                    }
+                }
+            } catch (error) {
+                console.error('Error in keyboard shortcut handler:', error);
+            }
+        });
+
+        // Helper function to update active navigation item
+        function updateActiveNavItem(index) {
+            try {
+                const navItems = document.querySelectorAll('.nav-item');
+                navItems.forEach(item => item.classList.remove('active'));
+                if (navItems[index]) {
+                    navItems[index].classList.add('active');
+                }
+            } catch (error) {
+                console.error('Error updating active nav item:', error);
+            }
+        }
+
+        // Demo data updates with error handling
+        const demoUpdateInterval = setInterval(() => {
+            // Simulate live updates
+            const activeSessionsCount = document.querySelector('.sidebar .quick-actions + h3 + div div:first-child strong');
+            if (activeSessionsCount) {
+                try {
+                    const current = parseInt(activeSessionsCount.textContent) || 0;
+                    const newCount = Math.max(0, current + (Math.random() > 0.7 ? (Math.random() > 0.5 ? 1 : -1) : 0));
+                    activeSessionsCount.textContent = newCount;
+                    activeSessionsCount.style.color = newCount === 0 ? '#38a169' : '#4c51bf';
+                } catch (error) {
+                    console.warn('Error updating demo data:', error);
+                }
+            }
+        }, 30000);
+
+        // Safe console logging
+        try {
+            console.log('🏥 DKR Management System loaded successfully!');
+            console.log('💡 Keyboard shortcuts: Ctrl+1 (Dashboard), Ctrl+2 (Check-in), Ctrl+3 (Session), Ctrl+E (Emergency)');
+        } catch (error) {
+            // Console might not be available in some environments
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (timerInterval) clearInterval(timerInterval);
+            if (demoUpdateInterval) clearInterval(demoUpdateInterval);
+        });
+    </script>
+</body>
+</html>

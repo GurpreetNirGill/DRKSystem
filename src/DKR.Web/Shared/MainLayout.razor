@@ -1,0 +1,67 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject IDeploymentService DeploymentService
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+
+<div class="page">
+    <AuthorizeView>
+        <Authorized>
+            <div class="sidebar">
+                <NavMenu />
+            </div>
+        </Authorized>
+    </AuthorizeView>
+    <main>
+        <AuthorizeView>
+            <Authorized>
+                <div class="top-row px-4">
+                    <div class="d-flex align-items-center">
+                        <h3 class="mb-0">🏥 DKR Management System</h3>
+                        @if (DeploymentService.IsCloudDeployment())
+                        {
+                            <span class="badge bg-info ms-2">Cloud</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success ms-2">On-Premise</span>
+                        }
+                    </div>
+                      <div class="d-flex align-items-center">
+                <span class="me-3">@context.User.Identity?.Name</span>
+                <span class="me-3">|</span>
+                <span class="me-3">@_facility</span>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="() => ShowSettings()">
+                    <i class="oi oi-cog"></i>
+                </button>
+            </div>
+                </div>
+
+                <article class="content px-4">
+                    <div class="notification-area">
+                        <NotificationComponent />
+                    </div>
+                    @Body
+                </article>
+
+            </Authorized>
+            <NotAuthorized>
+                <RedirectToLogin />
+            </NotAuthorized>
+        </AuthorizeView>
+    </main>
+</div> 
+@code {
+    private string _facility = "DKR Hamburg-Altona";
+    
+    protected override void OnInitialized()
+    {
+        // Benutzerinformationen laden
+    }
+
+    private void ShowSettings()
+    {
+        Navigation.NavigateTo("/settings");
+    }
+}

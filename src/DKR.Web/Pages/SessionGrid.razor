@@ -1,0 +1,130 @@
+@page "/active-session"
+@using DKR.Web.Components
+@using DKR.Core.Services
+@using DKR.Core.Entities
+@using DKR.Shared.Enums
+@inject NavigationManager Navigation
+@inject SessionService SessionService
+<PageTitle>Sessions - DKR System</PageTitle>
+<div class="container-fluid">
+    <h1>Aktive Sessions</h1>
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Platz</th>
+                        <th>Klient</th>
+                        <th>Startzeit</th>
+                        <th>Dauer</th>
+                        <th>Substanz</th>
+                        <th>Status</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var session in _activeSessions)
+                    {
+                        <tr class="@GetSessionRowClass(session)">
+                            <td>@session.Room</td>
+                            <td>@session.Client?.UUID</td>
+                            <td>@session.StartTime.ToString("HH:mm")</td>
+                            <td>@GetSessionDuration(session)</td>
+                            <td>@session.Substance</td>
+                            <td>
+                                <span class="badge @GetStatusBadgeClass(session.Status)">
+                                    @GetStatusText(session.Status)
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" @onclick="() => ViewSession(session.Id)">
+                                        <i class="oi oi-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-success" @onclick="() => EndSession(session.Id)">
+                                        <i class="oi oi-media-stop"></i>
+                                    </button>
+                                    @if (session.Status != SessionStatus.Emergency)
+                                    {
+                                        <button class="btn btn-outline-danger" @onclick="() => EmergencySession(session.Id)">
+                                            <i class="oi oi-warning"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+@code {
+
+    private List<DKR.Core.Entities.Session> _activeSessions = new();
+
+    private string uri = string.Empty;
+    protected override async Task OnInitializedAsync()
+    {
+         uri = Navigation.ToBaseRelativePath(Navigation.Uri).ToLower();
+        await LoadSessionData();
+    }
+    private string GetStatusBadgeClass(SessionStatus status)
+    {
+        return status switch
+        {
+            SessionStatus.Active => "bg-success",
+            SessionStatus.Monitoring => "bg-warning",
+            SessionStatus.Emergency => "bg-danger",
+            SessionStatus.Waiting => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetSessionDuration(DKR.Core.Entities.Session session)
+    {
+        var duration = DateTime.UtcNow - session.StartTime;
+        return $"{duration.Minutes:D2}:{duration.Seconds:D2}";
+    }
+    private string GetSessionRowClass(DKR.Core.Entities.Session session)
+    {
+        var duration = DateTime.UtcNow - session.StartTime;
+        if (duration.TotalMinutes >= 25) return "table-warning";
+        if (duration.TotalMinutes >= 20) return "table-info";
+        return "";
+    }
+    private string GetStatusText(SessionStatus status)
+    {
+        return status switch
+        {
+            SessionStatus.Active => "Aktiv",
+            SessionStatus.Monitoring => "Überwachung",
+            SessionStatus.Emergency => "Notfall",
+            SessionStatus.Waiting => "Wartend",
+            _ => "Unbekannt"
+        };
+    }
+
+    private void ViewSession(string sessionId)
+    {
+        Navigation.NavigateTo($"/session/view/{sessionId}");
+    }
+
+    private async Task EndSession(string sessionId)
+    {
+        await SessionService.EndSessionAsync(sessionId);
+        await LoadSessionData();
+    }
+
+    private async Task EmergencySession(string sessionId)
+    {
+        await SessionService.MarkEmergencyAsync(sessionId, Core.Entities.EmergencyType.Overdose);
+        await LoadSessionData();
+    }
+
+    private async Task LoadSessionData()
+    {
+            _activeSessions = (await SessionService.GetActiveStatusSessionsAsync()).ToList();
+    }
+}

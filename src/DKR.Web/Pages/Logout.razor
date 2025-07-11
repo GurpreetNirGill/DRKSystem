@@ -1,0 +1,25 @@
+@page "/logout"
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
+@inject AuthenticationStateProvider AuthProvider
+@using DKR.Web.Auth
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+
+<PageTitle>Logout</PageTitle>
+
+<p>Sie werden abgemeldet...</p>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        // await HttpContextAccessor.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        // if (AuthProvider is DKR.Web.Auth.CookieAuthenticationStateProvider cookieProvider)
+        // {
+        //     cookieProvider.NotifyAuthStateChanged();
+        // }
+        if (AuthProvider is InMemoryAuthStateProvider p)
+            await p.SignOutAsync();
+        Navigation.NavigateTo("/login", true);
+    }
+}

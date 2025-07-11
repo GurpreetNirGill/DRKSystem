@@ -1,0 +1,572 @@
+@page "/harmreduction"
+@inject DKR.Core.Services.HarmReductionService HarmReductionService
+@inject ClientService ClientService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Harm Reduction - DKR System</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <h1>🩺 Harm Reduction Services</h1>
+
+            <!-- Terminverwaltung -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">📅 Neuen Termin vereinbaren</h5>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="_appointmentForm" OnValidSubmit="BookAppointment">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" />
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Service-Typ *</label>
+                                    <InputSelect class="form-select" @bind-Value="_appointmentForm.ServiceType">
+                                        <option value="@DKR.Core.Entities.ServiceType.HIVTest">🩸 HIV-Schnelltest</option>
+                                        <option value="@DKR.Core.Entities.ServiceType.HCVTest">🩸 HCV-Schnelltest</option>
+                                        <option value="@DKR.Core.Entities.ServiceType.HIVHCVCombiTest">🩸 HIV + HCV Kombi-Test</option>
+                                        <option value="@DKR.Core.Entities.ServiceType.WoundCare">🩹 Wundversorgung</option>
+                                        <option value="@DKR.Core.Entities.ServiceType.VeinCounseling">💉 Venenberatung</option>
+                                        <option value="@DKR.Core.Entities.ServiceType.SubstitutionCounseling">💊 Substitutionsberatung</option>
+                                        <option value="@DKR.Core.Entities.ServiceType.FollowUpCare">📋 Nachsorge-Gespräch</option>
+                                    </InputSelect>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Klient-ID</label>
+                                    <div class="input-group">
+                                        <InputText class="form-control" @bind-Value="_appointmentForm.ClientId" placeholder="KL-2024-XXXX" />
+                                        <button type="button" class="btn btn-outline-secondary" @onclick="OpenClientSearch">
+                                            <i class="oi oi-magnifying-glass"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Wunschtermin *</label>
+                                    <InputDate class="form-control" @bind-Value="_appointmentForm.PreferredDate" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Uhrzeit *</label>
+                                    <InputSelect class="form-select" @bind-Value="_appointmentForm.PreferredTime">
+                                        <option value="">-- Uhrzeit wählen --</option>
+                                        @for (int hour = 9; hour <= 17; hour++)
+                                        {
+                                            @for (int minute = 0; minute < 60; minute += 30)
+                                            {
+                                                var time = $"{hour:D2}:{minute:D2}";
+                                                <option value="@time">@time</option>
+                                            }
+                                        }
+                                    </InputSelect>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Durchführende Fachkraft</label>
+                                    <InputSelect class="form-select" @bind-Value="_appointmentForm.Provider">
+                                        <option value="">-- Automatisch zuweisen --</option>
+                                        <option value="Dr. Maria Schmidt">Dr. Maria Schmidt (Ärztin)</option>
+                                        <option value="Tom Meyer">Tom Meyer (Krankenpfleger)</option>
+                                        <option value="Lisa Weber">Lisa Weber (Sozialarbeiterin)</option>
+                                        <option value="Sarah Johnson">Sarah Johnson (Beraterin)</option>
+                                    </InputSelect>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Priorität</label>
+                                    <InputSelect class="form-select" @bind-Value="_appointmentForm.Priority">
+                                        <option value="Normal">Normal</option>
+                                        <option value="Hoch">Hoch (innerhalb 24h)</option>
+                                        <option value="Dringend">Dringend (sofort)</option>
+                                    </InputSelect>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <InputCheckbox class="form-check-input" @bind-Value="_appointmentForm.SendReminder" />
+                                <label class="form-check-label">
+                                    📱 Push-Notification und SMS-Erinnerung senden
+                                    <br><small class="text-muted">Automatische Erinnerung 24h und 2h vor Termin</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Notizen</label>
+                            <InputTextArea class="form-control" @bind-Value="_appointmentForm.Notes" rows="3" 
+                                         placeholder="Besondere Hinweise, Voruntersuchungen, etc." />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="oi oi-calendar"></i> Termin buchen
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+
+            <!-- Akute Wundversorgung -->
+            <div class="card mb-4">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">🩹 Akute Wundversorgung</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="oi oi-warning"></i> <strong>Notfall-Wundversorgung:</strong> Sofortige Dokumentation erforderlich
+                    </div>
+
+                    <EditForm Model="_woundCareForm" OnValidSubmit="DocumentWoundCare">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Klient-ID *</label>
+                                    <InputText class="form-control" @bind-Value="_woundCareForm.ClientId" placeholder="KL-2024-XXXX" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Wundart *</label>
+                                    <InputSelect class="form-select" @bind-Value="_woundCareForm.WoundType">
+                                        <option value="">-- Wundart wählen --</option>
+                                        <option value="Einstichstelle entzündet">🔴 Einstichstelle entzündet</option>
+                                        <option value="Abszess">🟡 Abszess</option>
+                                        <option value="Venenschaden">🔵 Venenschaden</option>
+                                        <option value="Schnittwunde">✂️ Schnittwunde</option>
+                                        <option value="Verbrennung">🔥 Verbrennung</option>
+                                        <option value="Andere">❓ Andere</option>
+                                    </InputSelect>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Schweregrad *</label>
+                                    <InputSelect class="form-select" @bind-Value="_woundCareForm.Severity">
+                                        <option value="">-- Schweregrad --</option>
+                                        <option value="Leicht">🟢 Leicht (ambulant behandelbar)</option>
+                                        <option value="Mittel">🟡 Mittel (Überwachung erforderlich)</option>
+                                        <option value="Schwer">🔴 Schwer (Klinik-Einweisung nötig)</option>
+                                    </InputSelect>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Lokalisation</label>
+                                    <InputSelect class="form-select" @bind-Value="_woundCareForm.Location">
+                                        <option value="">-- Körperstelle --</option>
+                                        <option value="Arm links">Arm links</option>
+                                        <option value="Arm rechts">Arm rechts</option>
+                                        <option value="Hand links">Hand links</option>
+                                        <option value="Hand rechts">Hand rechts</option>
+                                        <option value="Bein links">Bein links</option>
+                                        <option value="Bein rechts">Bein rechts</option>
+                                        <option value="Andere">Andere</option>
+                                    </InputSelect>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Durchgeführte Maßnahmen *</label>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" @bind="_measures.WoundCleaning" />
+                                        <label class="form-check-label">🧼 Wundreinigung</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" @bind="_measures.Disinfection" />
+                                        <label class="form-check-label">🧽 Desinfektion</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" @bind="_measures.BandageChange" />
+                                        <label class="form-check-label">🩹 Verbandswechsel</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" @bind="_measures.AntibioticOintment" />
+                                        <label class="form-check-label">💊 Antibiotika-Salbe</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" @bind="_measures.PainMedication" />
+                                        <label class="form-check-label">💉 Schmerzmedikation</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" @bind="_measures.TetanusShot" />
+                                        <label class="form-check-label">💉 Tetanus-Auffrischung</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Behandlungsnotizen</label>
+                            <InputTextArea class="form-control" @bind-Value="_woundCareForm.Notes" rows="3" 
+                                         placeholder="Zustand der Wunde, Behandlungsverlauf, Nachsorge-Empfehlungen..." />
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" @bind="_woundCareForm.FollowUpRequired" />
+                                <label class="form-check-label">
+                                    📅 Nachkontrolle erforderlich
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-warning">
+                            <i class="oi oi-medical-cross"></i> Wundversorgung dokumentieren
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Heute geplante Termine -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">📅 Heute geplant (@DateTime.Today.ToString("dd.MM.yyyy"))</h5>
+                </div>
+                <div class="card-body">
+                    @if (!_todaysAppointments.Any())
+                    {
+                        <div class="text-center text-muted py-3">
+                            <i class="oi oi-calendar" style="font-size: 2rem;"></i>
+                            <p class="mt-2">Keine Termine heute</p>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var appointment in _todaysAppointments)
+                        {
+                            <div class="appointment-card mb-3 p-3 border rounded @GetAppointmentStatusClass(appointment.Status)">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong>@appointment.ScheduledAt.ToString("HH:mm") - @GetServiceTypeName(appointment.Type)</strong>
+                                        <br><small class="text-muted">@appointment.Client?.UUID</small>
+                                        <br><small class="text-muted">@appointment.ProvidedBy</small>
+                                    </div>
+                                    <div>
+                                        <span class="badge @GetStatusBadgeClass(appointment.Status)">
+                                            @GetStatusText(appointment.Status)
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <div class="btn-group btn-group-sm">
+                                        @if (appointment.Status == DKR.Core.Entities.ServiceStatus.Scheduled)
+                                        {
+                                            <button class="btn btn-outline-success" @onclick="() => CompleteAppointment(appointment.Id)">
+                                                <i class="oi oi-check"></i> Erledigt
+                                            </button>
+                                            <button class="btn btn-outline-info" @onclick="() => SendReminder(appointment.Id)">
+                                                <i class="oi oi-bell"></i> Erinnerung
+                                            </button>
+                                        }
+                                        else if (appointment.Status == DKR.Core.Entities.ServiceStatus.Confirmed)
+                                        {
+                                            <button class="btn btn-success" @onclick="() => StartAppointment(appointment.Id)">
+                                                <i class="oi oi-media-play"></i> Starten
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <!-- Service-Statistiken -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">📊 Service-Statistiken (Monat)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <h4 class="text-primary">@_monthlyStats.HIVTests</h4>
+                            <small class="text-muted">HIV-Tests</small>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <h4 class="text-info">@_monthlyStats.HCVTests</h4>
+                            <small class="text-muted">HCV-Tests</small>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <h4 class="text-warning">@_monthlyStats.WoundCares</h4>
+                            <small class="text-muted">Wundversorgungen</small>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <h4 class="text-success">@_monthlyStats.Counselings</h4>
+                            <small class="text-muted">Beratungen</small>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    @{
+                        var totalServices = _monthlyStats.TotalServices;
+                        var capacity = _monthlyStats.Capacity;
+                        var utilization = capacity == 0 ? 0 : (totalServices * 100.0 / capacity);
+                        var utilizationFormatted = utilization.ToString("F1");
+                    }
+
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>Auslastung:</span>
+                            <strong>@totalServices / @capacity (@utilizationFormatted%)</strong>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" style="width: @utilizationFormatted%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <span>Durchschnittl. Wartezeit:</span>
+                        <strong>@_monthlyStats.AverageWaitTime Min</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private AppointmentForm _appointmentForm = new();
+    private WoundCareForm _woundCareForm = new();
+    private WoundCareMeasures _measures = new();
+    private List<DKR.Core.Entities.HarmReduction> _todaysAppointments = new();
+    private MonthlyStatistics _monthlyStats = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTodaysAppointments();
+        await LoadMonthlyStatistics();
+    }
+
+    private async Task BookAppointment()
+    {
+        try
+        {
+            var appointment = new DKR.Core.Entities.HarmReduction
+                {
+                Type = _appointmentForm.ServiceType,
+                ClientId = _appointmentForm.ClientId!,
+                ScheduledAt = _appointmentForm.PreferredDate.Add(TimeSpan.Parse(_appointmentForm.PreferredTime!)),
+                ProvidedBy = _appointmentForm.Provider ?? "Auto-Zuweisung",
+                    Status = DKR.Core.Entities.ServiceStatus.Scheduled,
+                    Notes = _appointmentForm.Notes
+            };
+
+            await HarmReductionService.BookAppointmentAsync(
+     appointment.ClientId,
+     appointment.Type,
+     appointment.ServiceDate // assuming this is a DateTime value
+     );
+
+            await JSRuntime.InvokeVoidAsync("alert", "✅ Termin erfolgreich gebucht!");
+            
+            _appointmentForm = new AppointmentForm();
+            await LoadTodaysAppointments();
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"❌ Fehler: {ex.Message}");
+        }
+    }
+
+    private async Task DocumentWoundCare()
+    {
+        try
+        {
+            var woundCare = new WoundCareRecord
+            {
+                ClientId = _woundCareForm.ClientId!,
+                WoundType = _woundCareForm.WoundType!,
+                Severity = _woundCareForm.Severity!,
+                Location = _woundCareForm.Location,
+                PerformedMeasures = GetPerformedMeasures(),
+                Notes = _woundCareForm.Notes,
+                FollowUpRequired = _woundCareForm.FollowUpRequired,
+                TreatedAt = DateTime.UtcNow
+            };
+
+            await HarmReductionService.DocumentWoundCareAsync(woundCare.ClientId, woundCare.Notes);
+
+            await JSRuntime.InvokeVoidAsync("alert", "✅ Wundversorgung erfolgreich dokumentiert!");
+            
+            _woundCareForm = new WoundCareForm();
+            _measures = new WoundCareMeasures();
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"❌ Fehler: {ex.Message}");
+        }
+    }
+
+    private List<string> GetPerformedMeasures()
+    {
+        var measures = new List<string>();
+        if (_measures.WoundCleaning) measures.Add("Wundreinigung");
+        if (_measures.Disinfection) measures.Add("Desinfektion");
+        if (_measures.BandageChange) measures.Add("Verbandswechsel");
+        if (_measures.AntibioticOintment) measures.Add("Antibiotika-Salbe");
+        if (_measures.PainMedication) measures.Add("Schmerzmedikation");
+        if (_measures.TetanusShot) measures.Add("Tetanus-Auffrischung");
+        return measures;
+    }
+
+    private async Task LoadTodaysAppointments()
+    {
+        var today = DateTime.Today;
+        _todaysAppointments = (await HarmReductionService.GetAppointmentsByDateAsync(today)).ToList();
+    }
+
+    private async Task LoadMonthlyStatistics()
+    {
+        var firstDayOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+        var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+        
+     //  _monthlyStats = await HarmReductionService.GetMonthlyStatisticsAsync(firstDayOfMonth, lastDayOfMonth);
+    }
+
+    // Helper Methods
+    private string GetServiceTypeName(DKR.Core.Entities.ServiceType type) => type switch
+    {
+        DKR.Core.Entities.ServiceType.HIVTest => "HIV-Test",
+        DKR.Core.Entities.ServiceType.HCVTest => "HCV-Test",
+        DKR.Core.Entities.ServiceType.HIVHCVCombiTest => "HIV+HCV Test",
+        DKR.Core.Entities.ServiceType.WoundCare => "Wundversorgung",
+        DKR.Core.Entities.ServiceType.VeinCounseling => "Venenberatung",
+        DKR.Core.Entities.ServiceType.SubstitutionCounseling => "Substitutionsberatung",
+        DKR.Core.Entities.ServiceType.FollowUpCare => "Nachsorge",
+        _ => "Unbekannt"
+    };
+
+    private string GetAppointmentStatusClass(DKR.Core.Entities.ServiceStatus status) => status switch
+    {
+        DKR.Core.Entities.ServiceStatus.Scheduled => "border-primary",
+        DKR.Core.Entities.ServiceStatus.Confirmed => "border-success",
+        DKR.Core.Entities.ServiceStatus.Completed => "border-secondary",
+        DKR.Core.Entities.ServiceStatus.Cancelled => "border-danger",
+        DKR.Core.Entities.ServiceStatus.NoShow => "border-warning",
+        _ => ""
+    };
+
+    private string GetStatusBadgeClass(DKR.Core.Entities.ServiceStatus status) => status switch
+    {
+        DKR.Core.Entities.ServiceStatus.Scheduled => "bg-primary",
+         DKR.Core.Entities.ServiceStatus.Confirmed => "bg-success",
+        DKR.Core.Entities.ServiceStatus.Completed => "bg-secondary",
+        DKR.Core.Entities.ServiceStatus.Cancelled => "bg-danger",
+        DKR.Core.Entities.ServiceStatus.NoShow => "bg-warning",
+        _ => "bg-light"
+    };
+
+    private string GetStatusText(DKR.Core.Entities.ServiceStatus status) => status switch
+    {
+         DKR.Core.Entities.ServiceStatus.Scheduled => "Geplant",
+        DKR.Core.Entities.ServiceStatus.Confirmed => "Bestätigt",
+        DKR.Core.Entities.ServiceStatus.Completed => "Erledigt",
+         DKR.Core.Entities.ServiceStatus.Cancelled => "Abgesagt",
+        DKR.Core.Entities.ServiceStatus.NoShow => "Nicht erschienen",
+        _ => "Unbekannt"
+    };
+
+    private void OpenClientSearch()
+    {
+        // Implementiere Client-Suche
+    }
+
+    private async Task CompleteAppointment(string appointmentId)
+    {
+        await HarmReductionService.CompleteAppointmentAsync(appointmentId);
+        await LoadTodaysAppointments();
+    }
+
+    private async Task SendReminder(string appointmentId)
+    {
+        await HarmReductionService.SendReminderAsync(appointmentId);
+        await JSRuntime.InvokeVoidAsync("alert", "📱 Erinnerung gesendet!");
+    }
+
+    private async Task StartAppointment(string appointmentId)
+    {
+        // Navigate to appointment details
+    }
+
+    // Form Models
+    public class AppointmentForm
+    {
+        public DKR.Core.Entities.ServiceType ServiceType { get; set; } = DKR.Core.Entities.ServiceType.HIVTest;
+        public string? ClientId { get; set; }
+        public DateTime PreferredDate { get; set; } = DateTime.Today.AddDays(1);
+        public string? PreferredTime { get; set; }
+        public string? Provider { get; set; }
+        public string Priority { get; set; } = "Normal";
+        public bool SendReminder { get; set; } = true;
+        public string? Notes { get; set; }
+    }
+
+    public class WoundCareForm
+    {
+        public string? ClientId { get; set; }
+        public string? WoundType { get; set; }
+        public string? Severity { get; set; }
+        public string? Location { get; set; }
+        public string? Notes { get; set; }
+        public bool FollowUpRequired { get; set; }
+    }
+
+    public class WoundCareMeasures
+    {
+        public bool WoundCleaning { get; set; }
+        public bool Disinfection { get; set; }
+        public bool BandageChange { get; set; }
+        public bool AntibioticOintment { get; set; }
+        public bool PainMedication { get; set; }
+        public bool TetanusShot { get; set; }
+    }
+
+    public class MonthlyStatistics
+    {
+        public int HIVTests { get; set; } = 47;
+        public int HCVTests { get; set; } = 52;
+        public int WoundCares { get; set; } = 23;
+        public int Counselings { get; set; } = 18;
+        public int TotalServices => HIVTests + HCVTests + WoundCares + Counselings;
+        public int Capacity { get; set; } = 200;
+        public int AverageWaitTime { get; set; } = 15;
+    }
+
+    public class WoundCareRecord
+    {
+        public string ClientId { get; set; } = string.Empty;
+        public string WoundType { get; set; } = string.Empty;
+        public string Severity { get; set; } = string.Empty;
+        public string? Location { get; set; }
+        public List<string> PerformedMeasures { get; set; } = new();
+        public string? Notes { get; set; }
+        public bool FollowUpRequired { get; set; }
+        public DateTime TreatedAt { get; set; }
+    }
+}

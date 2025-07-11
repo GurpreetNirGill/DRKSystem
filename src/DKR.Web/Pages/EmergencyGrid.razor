@@ -1,0 +1,62 @@
+@page "/emergency"
+@using DKR.Web.Components
+@using DKR.Core.Services
+@using DKR.Core.Entities
+@using DKR.Shared.Enums
+@inject NavigationManager Navigation
+@inject SessionService SessionService
+@inject EmergencyService EmergencyService
+<PageTitle>Sessions - DKR System</PageTitle>
+<style>
+	td {
+		background: transparent !important;
+	}
+</style>
+<div class="container-fluid">
+	<h1>Notfall Sessions</h1>
+	<div class="card">
+		<div class="table-responsive">
+			<table class="table table-hover">
+				<thead>
+					<tr>
+					<th>Raum</th>
+					<th>KundenId</th>
+					<th>Blutdruck</th>
+					<th>Herzfrequenz</th>
+					<th>Ereigniszeit</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var emergency in _emergencyEvents)
+					{
+						<tr style="@(emergency.Session?.Status == SessionStatus.Active ? "background-color: #ffb5b5 !important;" : "")">
+							<td>@emergency.Room</td>
+							<td>@emergency.ClientId</td>
+							<td>@emergency.BloodPressure</td>
+							<td>@emergency.HeartRate</td>
+							<td>@emergency.OccurredAt.ToString("dd.MM.yyyy")</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+
+	</div>
+</div>
+@code {
+
+	private List<EmergencyEvent> _emergencyEvents = new();
+
+	private string uri = string.Empty;
+	protected override async Task OnInitializedAsync()
+	{
+		uri = Navigation.ToBaseRelativePath(Navigation.Uri).ToLower();
+		await LoadSessionData();
+	}
+
+	private async Task LoadSessionData()
+	{
+		_emergencyEvents = (await EmergencyService.GetAllEmergencyEventsAsync()).ToList();
+
+	}
+}

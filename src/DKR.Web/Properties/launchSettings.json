@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "DKR.Web": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "hotReloadEnabled": false,
+      "applicationUrl": "https://localhost:52595;http://localhost:52596"
+    }
+  }
+}

@@ -1,0 +1,284 @@
+@page "/inventory"
+@inject InventoryService InventoryService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Lagerverwaltung - DKR System</PageTitle>
+
+<div class="container-fluid">
+    <h1>📦 Lagerverwaltung</h1>
+
+    @if (_lowStockAlerts.Any())
+    {
+        <div class="alert alert-warning">
+            <strong>⚠️ @_lowStockAlerts.Count Artikel unter Mindestbestand!</strong>
+        </div>
+    }
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <button class="btn btn-primary me-2" @onclick="ShowAddStockModal">
+                <i class="oi oi-plus"></i> Wareneingang
+            </button>
+            <button class="btn btn-secondary me-2" @onclick="ExportInventory">
+                <i class="oi oi-data-transfer-download"></i> Excel Export
+            </button>
+            <button class="btn btn-info" @onclick="GenerateOrderList">
+                <i class="oi oi-list"></i> Bestellliste
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Artikel</th>
+                            <th>Aktueller Bestand</th>
+                            <th>Mindestbestand</th>
+                            <th>Letzter Zugang</th>
+                            <th>Ablaufdatum</th>
+                            <th>Status</th>
+                            <th>Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in _inventoryItems)
+                        {
+                            <tr class="@GetRowClass(item)">
+                                <td>
+                                    <strong>@item.Name</strong>
+                                    <br><small class="text-muted">@item.Category</small>
+                                </td>
+                                <td>
+                                    <span class="@GetStockClass(item)">@item.CurrentStock</span>
+                                    <small class="text-muted">@item.Unit</small>
+                                </td>
+                                <td>@item.MinimumStock</td>
+                                <td>@item.LastRestocked.ToString("dd.MM.yyyy")</td>
+                                <td>
+                                    @if (item.ExpiryDate.HasValue)
+                                    {
+                                        <span class="@GetExpiryClass(item.ExpiryDate.Value)">
+                                            @item.ExpiryDate.Value.ToString("MM/yyyy")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(item)">
+                                        @GetStatusText(item)
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" @onclick="() => AddStock(item.Id)">
+                                            <i class="oi oi-plus"></i>
+                                        </button>
+                                        <button class="btn btn-outline-secondary" @onclick="() => ViewHistory(item.Id)">
+                                            <i class="oi oi-clock"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Stock Modal -->
+@if (_showAddStockModal)
+{
+    <div class="modal show d-block" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">📦 Wareneingang</h5>
+                    <button type="button" class="btn-close" @onclick="CloseAddStockModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="_stockForm" OnValidSubmit="ProcessStockEntry">
+                        <div class="mb-3">
+                            <label class="form-label">Artikel</label>
+                            <InputSelect class="form-select" @bind-Value="_stockForm.ItemId">
+                                <option value="">-- Artikel wählen --</option>
+                                @foreach (var item in _inventoryItems)
+                                {
+                                    <option value="@item.Id">@item.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Menge</label>
+                                    <InputNumber class="form-control" @bind-Value="_stockForm.Quantity" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Ablaufdatum</label>
+                                    <InputDate class="form-control" @bind-Value="_stockForm.ExpiryDate" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Lieferant</label>
+                            <InputSelect class="form-select" @bind-Value="_stockForm.Supplier">
+                                <option value="">-- Lieferant wählen --</option>
+                                <option value="BD Medical">BD Medical</option>
+                                <option value="B.Braun">B.Braun</option>
+                                <option value="Terumo">Terumo</option>
+                                <option value="Abbott">Abbott</option>
+                                <option value="Pfizer">Pfizer</option>
+                            </InputSelect>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseAddStockModal">Abbrechen</button>
+                            <button type="submit" class="btn btn-primary">Wareneingang buchen</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<InventoryItem> _inventoryItems = new();
+    private List<InventoryItem> _lowStockAlerts = new();
+    private bool _showAddStockModal = false;
+    private StockEntryForm _stockForm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInventoryItems();
+    }
+
+    private async Task LoadInventoryItems()
+    {
+        // Demo-Daten - in Produktion aus Repository laden
+        _inventoryItems = new List<InventoryItem>
+        {
+            new() { Id = "1", Name = "Sterile Spritzen 2ml", Category = "Spritzen", CurrentStock = 12, MinimumStock = 50, Unit = "Stück", LastRestocked = DateTime.Now.AddDays(-3), ExpiryDate = DateTime.Now.AddYears(2) },
+            new() { Id = "2", Name = "Nadeln Orange (25G)", Category = "Nadeln", CurrentStock = 45, MinimumStock = 40, Unit = "Stück", LastRestocked = DateTime.Now.AddDays(-3), ExpiryDate = DateTime.Now.AddMonths(18) },
+            new() { Id = "3", Name = "Naloxon 0.4mg", Category = "Medikamente", CurrentStock = 3, MinimumStock = 10, Unit = "Ampullen", LastRestocked = DateTime.Now.AddDays(-5), ExpiryDate = DateTime.Now.AddMonths(3) },
+            new() { Id = "4", Name = "Alkoholtupfer", Category = "Desinfektion", CurrentStock = 127, MinimumStock = 50, Unit = "Stück", LastRestocked = DateTime.Now.AddDays(-8), ExpiryDate = DateTime.Now.AddYears(1) },
+            new() { Id = "5", Name = "Filter", Category = "Zubehör", CurrentStock = 89, MinimumStock = 30, Unit = "Stück", LastRestocked = DateTime.Now.AddDays(-8) },
+            new() { Id = "6", Name = "HIV-Schnelltests", Category = "Tests", CurrentStock = 8, MinimumStock = 15, Unit = "Tests", LastRestocked = DateTime.Now.AddDays(-12), ExpiryDate = DateTime.Now.AddMonths(6) },
+            new() { Id = "7", Name = "HCV-Schnelltests", Category = "Tests", CurrentStock = 12, MinimumStock = 15, Unit = "Tests", LastRestocked = DateTime.Now.AddDays(-12), ExpiryDate = DateTime.Now.AddMonths(6) }
+        };
+
+        _lowStockAlerts = _inventoryItems.Where(i => i.CurrentStock <= i.MinimumStock).ToList();
+    }
+
+    private void ShowAddStockModal()
+    {
+        _showAddStockModal = true;
+        _stockForm = new StockEntryForm();
+    }
+
+    private void CloseAddStockModal()
+    {
+        _showAddStockModal = false;
+    }
+
+    private async Task ProcessStockEntry()
+    {
+        try
+        {
+            var item = _inventoryItems.FirstOrDefault(i => i.Id == _stockForm.ItemId);
+            if (item != null)
+            {
+                item.CurrentStock += _stockForm.Quantity;
+                item.LastRestocked = DateTime.Now;
+                if (_stockForm.ExpiryDate.HasValue)
+                {
+                    item.ExpiryDate = _stockForm.ExpiryDate;
+                }
+            }
+
+            await JSRuntime.InvokeVoidAsync("alert", "✅ Wareneingang erfolgreich gebucht!");
+            CloseAddStockModal();
+            await LoadInventoryItems();
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"❌ Fehler: {ex.Message}");
+        }
+    }
+
+    private async Task AddStock(string itemId)
+    {
+        _stockForm.ItemId = itemId;
+        ShowAddStockModal();
+    }
+
+    private async Task ViewHistory(string itemId)
+    {
+        await JSRuntime.InvokeVoidAsync("alert", "📋 Bewegungshistorie wird angezeigt...");
+    }
+
+    private async Task ExportInventory()
+    {
+        await JSRuntime.InvokeVoidAsync("alert", "📊 Excel-Export wird generiert...");
+    }
+
+    private async Task GenerateOrderList()
+    {
+        var orderItems = _inventoryItems.Where(i => i.CurrentStock <= i.MinimumStock).ToList();
+        var orderList = string.Join("\n", orderItems.Select(i => $"- {i.Name}: {i.MinimumStock - i.CurrentStock + 20} {i.Unit}"));
+        
+        await JSRuntime.InvokeVoidAsync("alert", $"📋 Bestellliste:\n\n{orderList}");
+    }
+
+    // Helper Methods
+    private string GetRowClass(InventoryItem item)
+    {
+        if (item.CurrentStock <= item.MinimumStock) return "table-warning";
+        if (item.ExpiryDate.HasValue && item.ExpiryDate.Value <= DateTime.Now.AddMonths(1)) return "table-info";
+        return "";
+    }
+
+    private string GetStockClass(InventoryItem item)
+    {
+        if (item.CurrentStock <= item.MinimumStock) return "text-danger fw-bold";
+        return "text-success";
+    }
+
+    private string GetExpiryClass(DateTime expiryDate)
+    {
+        if (expiryDate <= DateTime.Now.AddMonths(1)) return "text-danger fw-bold";
+        if (expiryDate <= DateTime.Now.AddMonths(3)) return "text-warning";
+        return "";
+    }
+
+    private string GetStatusBadgeClass(InventoryItem item)
+    {
+        if (item.CurrentStock <= item.MinimumStock) return "bg-danger";
+        if (item.ExpiryDate.HasValue && item.ExpiryDate.Value <= DateTime.Now.AddMonths(1)) return "bg-warning";
+        return "bg-success";
+    }
+
+    private string GetStatusText(InventoryItem item)
+    {
+        if (item.CurrentStock <= item.MinimumStock) return "Kritisch";
+        if (item.ExpiryDate.HasValue && item.ExpiryDate.Value <= DateTime.Now.AddMonths(1)) return "Läuft ab";
+        return "OK";
+    }
+
+    public class StockEntryForm
+    {
+        public string ItemId { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public DateTime? ExpiryDate { get; set; }
+        public string Supplier { get; set; } = string.Empty;
+    }
+}

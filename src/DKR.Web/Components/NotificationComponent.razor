@@ -1,0 +1,52 @@
+@inject INotificationService NotificationService
+@implements IDisposable
+
+<div class="notification-container">
+    @foreach (var notification in _notifications.ToArray())
+    {
+        <div class="alert alert-@notification.Type.ToString().ToLower() alert-dismissible fade show" role="alert">
+            <strong>@notification.Title</strong> @notification.Message
+            <button type="button" class="btn-close" @onclick="() => RemoveNotification(notification.Id)"></button>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Notification> _notifications = new();
+
+    protected override void OnInitialized()
+    {
+        NotificationService.OnNotification += HandleNotification;
+    }
+
+    private void HandleNotification(Notification notification)
+    {
+        _notifications.Add(notification);
+        InvokeAsync(StateHasChanged);
+
+        // Auto-remove nach 5 Sekunden
+        Task.Delay(5000).ContinueWith(_ =>
+        {
+            RemoveNotification(notification.Id);
+        });
+    }
+
+    private void RemoveNotification(string id)
+    {
+        _notifications.RemoveAll(n => n.Id == id);
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        NotificationService.OnNotification -= HandleNotification;
+    }
+}
+
+<style>
+    .notification-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+</style>
