@@ -24,7 +24,7 @@
     {
         if (firstRender && !_shouldRenderLogin && !_hasRedirected)
         {
-          var stored = await _store.GetAsync<string>("dkr.auth");
+            var stored = await _store.GetAsync<string>("dkr.auths");
             if (!stored.Success)
             {
             _hasRedirected = true;

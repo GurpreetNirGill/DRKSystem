@@ -1,12 +1,16 @@
 using DKR.Shared.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace DKR.Core.Entities;
 
 public class Session
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
+    [Required(ErrorMessage = "Klient-ID ist erforderlich.")]
     public string ClientId { get; set; } = string.Empty;
     public string? TenantId { get; set; }
+
+    [Required(ErrorMessage = "Raum/Platz ist erforderlich.")]
     public string Room { get; set; } = string.Empty;
     public DateTime StartTime { get; set; }
     public DateTime? EndTime { get; set; }

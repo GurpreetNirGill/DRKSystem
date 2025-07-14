@@ -100,7 +100,6 @@
 								</div>
 							</div>
 						</div>
-
 						<!-- Substance and Method -->
 						<div class="row">
 							<div class="col-md-6">
@@ -208,7 +207,7 @@
 								@(_isPaused ? "Fortsetzen" : "Pausieren")
 							</button>
 						}
-						<button type="button" class="btn btn-danger" @onclick="EmergencySession">
+						<button type="submit" class="btn btn-danger" @onclick="() => _isEmergencySubmit = true">
 							<i class="oi oi-warning"></i> NOTFALL
 						</button>
 					</div>
@@ -241,6 +240,7 @@
 	private CancellationTokenSource _cts = new();
 	private System.Diagnostics.Stopwatch _sw = new();
 	private SessionDurationDto sessionDurationDto = new();
+	private bool _isEmergencySubmit = false;
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -285,7 +285,12 @@
 	{
 		try
 		{
-			if (_currentSession == null)
+			if (_isEmergencySubmit)
+			{
+				_isEmergencySubmit = false;
+				await EmergencySession();
+			}
+			else if (_currentSession == null)
 			{
 				await StartSession();
 			}
@@ -320,39 +325,55 @@
 
 	private async Task PauseSession()
 	{
-		if (_isPaused)
+		try
 		{
-			if (_pausedStartTime.HasValue)
+			if (_isPaused)
 			{
-				_pausedDuration += DateTime.UtcNow - _pausedStartTime.Value;
-				_pausedStartTime = null;
+				if (_pausedStartTime.HasValue)
+				{
+					_pausedDuration += DateTime.UtcNow - _pausedStartTime.Value;
+					_pausedStartTime = null;
+				}
+				_sw.Start();
+				await SessionService.UpdateSessionStatus(_sessionForm.Id, SessionStatus.Active);
 			}
-			_sw.Start();
-			await SessionService.UpdateSessionStatus(_sessionForm.Id, SessionStatus.Active);
+			else
+			{
+				_pausedStartTime = DateTime.UtcNow;
+				_sw.Stop();
+				await SessionService.UpdateSessionStatus(_sessionForm.Id, SessionStatus.Pause, true);
+			}
+			_isPaused = !_isPaused;
+			_errorMessage = string.Empty;
 		}
-		else
+		catch (Exception ex)
 		{
-			_pausedStartTime = DateTime.UtcNow;
-			_sw.Stop();
-			await SessionService.UpdateSessionStatus(_sessionForm.Id, SessionStatus.Pause, true);
+			_errorMessage = ex.Message;
 		}
-		_isPaused = !_isPaused;
 	}
 
 	private async Task EmergencySession()
 	{
-		if (_currentSession == null)
+		try
 		{
-			await SessionService.CreateEmergencySessionAsync(_sessionForm, Core.Entities.EmergencyType.Other);
+			if (_currentSession == null)
+			{
+				await SessionService.CreateEmergencySessionAsync(_sessionForm, Core.Entities.EmergencyType.Other);
+			}
+			else
+			{
+				await SessionService.MarkEmergencyAsync(_currentSession.Id, Core.Entities.EmergencyType.Other);
+				_currentSession = null;
+				Dispose();
+			}
+			_errorMessage = string.Empty;
+			// await JSRuntime.InvokeVoidAsync("alert", "Notfall wurde gemeldet!");
+			Navigation.NavigateTo("/");
 		}
-		else
+		catch (Exception ex)
 		{
-			await SessionService.MarkEmergencyAsync(_currentSession.Id, Core.Entities.EmergencyType.Other);
-			_currentSession = null;
-			Dispose();
+			_errorMessage = ex.Message;
 		}
-		// await JSRuntime.InvokeVoidAsync("alert", "Notfall wurde gemeldet!");
-		Navigation.NavigateTo("/");
 	}
 
 	private async Task RunCounterAsync(CancellationToken token)

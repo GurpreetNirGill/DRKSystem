@@ -121,7 +121,11 @@ public class SessionService
             HeartRate = sessionModal.Pulse
         };
         var savedEmergency = await _emergencyRepository.CreateAsync(emergencyEvent);
-        await _notificationService.NotifyAsync("NOTFALL", $"NOTFALL in {sessionModal.Room} - {emergencyType}", NotificationType.Danger);
+        await _notificationService.NotifyAsync(
+    "NOTFALL-Session gestartet",
+    $"NOTFALL-Session für Klient {sessionModal.ClientId} in Raum {sessionModal.Room} gestartet",
+    NotificationType.Danger
+);
         return createdSession;
     }
     public async Task<Session> MarkEmergencyAsync(string sessionId, Entities.EmergencyType emergencyType)
@@ -150,7 +154,11 @@ public class SessionService
             HeartRate = session.Pulse
         };
         var savedEmergency = await _emergencyRepository.CreateAsync(emergencyEvent);
-        await _notificationService.NotifyAsync("NOTFALL", $"NOTFALL in {session.Room} - {emergencyType}", NotificationType.Danger);
+        await _notificationService.NotifyAsync(
+    "NOTFALL-Session gestartet",
+     $"NOTFALL-Session für Klient {session.ClientId} in Raum {session.Room} gestartet",
+ NotificationType.Danger
+);
         return updatedSession;
     }
 
