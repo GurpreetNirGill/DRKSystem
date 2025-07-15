@@ -1,8 +1,8 @@
 services:
   dkr-web:
     build:
-      context: .                  # Root context, since Dockerfile is now in project root
-      dockerfile: Dockerfile     # Dockerfile is now directly in root
+      context: ./src                 # Root context, since Dockerfile is now in project root
+      dockerfile: DKR.Web/Dockerfile     # Dockerfile is now directly in root
     ports:
       - "52595:443"
       - "5002:80"
