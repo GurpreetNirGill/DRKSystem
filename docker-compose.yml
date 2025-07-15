@@ -1,15 +1,17 @@
+version: '3.8'
+
 services:
   dkr-web:
     build:
-      context: ./src                 # Root context, since Dockerfile is now in project root
-      dockerfile: DKR.Web/Dockerfile     # Dockerfile is now directly in root
+      context: ./src                     # Root of source files
+      dockerfile: DKR.Web/Dockerfile    # Path to Dockerfile relative to context
     ports:
       - "52595:443"
       - "5002:80"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
-      - "ConnectionStrings__DefaultConnection=Server=DESKTOP-QV6CK5K\\SQLEXPRESS;Database=DKRSystemDb;Trusted_Connection=True;TrustServerCertificate=True"
+      - ConnectionStrings__DefaultConnection=Server=DESKTOP-QV6CK5K\\SQLEXPRESS;Database=DKRSystemDb;Trusted_Connection=True;TrustServerCertificate=True
       - DeploymentMode=OnPremise
     depends_on:
       - dkr-db

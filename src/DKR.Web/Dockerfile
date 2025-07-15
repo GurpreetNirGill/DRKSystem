@@ -25,7 +25,6 @@ WORKDIR /app
 EXPOSE 80
 EXPOSE 443
 
-# Install dependencies for barcode scanning if needed
 RUN apt-get update && apt-get install -y \
     libgdiplus \
     libc6-dev \
