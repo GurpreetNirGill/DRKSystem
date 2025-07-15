@@ -11,7 +11,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
-      - ConnectionStrings__DefaultConnection=Server=DESKTOP-QV6CK5K\\SQLEXPRESS;Database=DKRSystemDb;Trusted_Connection=True;TrustServerCertificate=True
+      - ConnectionStrings__DefaultConnection=Server=sg1-wsq2.my-hosting-panel.com;Database=hindwave_DKR;User Id=dkr;Password=DKR@123!@#;TrustServerCertificate=True
       - DeploymentMode=OnPremise
     depends_on:
       - dkr-db
