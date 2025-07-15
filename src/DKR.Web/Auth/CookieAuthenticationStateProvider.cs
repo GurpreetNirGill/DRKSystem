@@ -41,7 +41,7 @@ public class CookieAuthenticationStateProvider : AuthenticationStateProvider
  
 public sealed class InMemoryAuthStateProvider : AuthenticationStateProvider
 {
-    private const string StorageKey = "dkr.auths";
+    private const string StorageKey = "dkr.user";
     private readonly ProtectedLocalStorage _store;
 
     private ClaimsPrincipal _principal = new(new ClaimsIdentity());
