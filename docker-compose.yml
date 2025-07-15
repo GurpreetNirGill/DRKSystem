@@ -4,14 +4,14 @@ services:
   dkr-web:
     build:
       context: ./src                     # Root of source files
-      dockerfile: Dockerfile    # Path to Dockerfile relative to context
+      dockerfile: Dockerfile             # Path to Dockerfile relative to context
     ports:
       - "52595:443"
       - "5002:80"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
-      - ConnectionStrings__DefaultConnection=Server=sg1-wsq2.my-hosting-panel.com;Database=hindwave_DKR;User Id=dkr;Password=DKR@123!@#;TrustServerCertificate=True
+      - ConnectionStrings__DefaultConnection=Server=dkr-db;Database=DKRSystemDb;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True
       - DeploymentMode=OnPremise
     depends_on:
       - dkr-db
@@ -33,6 +33,11 @@ services:
       - dkr-db-data:/var/opt/mssql
     networks:
       - dkr-network
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Password123 -Q 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   dkr-db-data:
