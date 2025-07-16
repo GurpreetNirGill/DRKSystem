@@ -134,6 +134,11 @@ public class ClientService
         var client = await _clientRepository.GetByIdAsync(clientId);
         return client;
     }
+    public async Task<List<Client>> GetAllClientAsync()
+    {
+        var clients = await _clientRepository.GetAllAsync();
+        return clients.ToList();
+    }
 }
 
 public class DuplicateCheckResult
