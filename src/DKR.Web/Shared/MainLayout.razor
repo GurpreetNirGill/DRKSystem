@@ -4,7 +4,6 @@
 
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
-
 <div class="page">
     <AuthorizeView>
         <Authorized>
@@ -51,7 +50,17 @@
             </NotAuthorized>
         </AuthorizeView>
     </main>
-</div> 
+</div>
+<div id="blazor-error-ui">
+    <environment include="Staging,Production">
+        Ein Fehler ist aufgetreten. Diese Anwendung reagiert möglicherweise erst wieder, wenn sie neu geladen wird.
+    </environment>
+    <environment include="Development">
+        Ein unbehandelter Fehler ist aufgetreten. Weitere Details finden Sie in der Browserkonsole.
+    </environment>
+    <a href="" class="reload">Neu laden</a>
+    <a class="dismiss">🗙</a>
+</div>
 @code {
     private string _facility = "DKR Hamburg-Altona";
     
