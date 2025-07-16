@@ -18,8 +18,8 @@
         // {
         //     cookieProvider.NotifyAuthStateChanged();
         // }
-        if (AuthProvider is InMemoryAuthStateProvider p)
-            await p.SignOutAsync();
+        if (AuthProvider is InMemoryAuthStateProvider inMemoryAuthState)
+            await inMemoryAuthState.SignOutAsync();
         Navigation.NavigateTo("/login", true);
     }
 }

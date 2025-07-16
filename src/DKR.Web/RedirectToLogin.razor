@@ -1,4 +1,4 @@
-﻿@using DKR.Web.Auth
+﻿@* @using DKR.Web.Auth
 @using Microsoft.AspNetCore.Components
 @using DKR.Web.Pages
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
@@ -24,13 +24,13 @@
     {
         if (firstRender && !_shouldRenderLogin && !_hasRedirected)
         {
-            var stored = await _store.GetAsync<string>("dkr.user");
+            var stored = await _store.GetAsync<string>("dkr.auths");
             if (!stored.Success)
             {
             _hasRedirected = true;
             Nav.NavigateTo("/login", true);
             }
-            
+
         }
     }
 }
@@ -38,4 +38,66 @@
 @if (_shouldRenderLogin)
 {
     <Login />
+} *@
+
+        @using DKR.Web.Auth
+@using Microsoft.AspNetCore.Components
+@using DKR.Web.Pages
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using System.Security.Cryptography
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthProvider
+@inject ProtectedLocalStorage _store
+
+@code {
+	private bool _shouldRenderLogin;
+	private bool _hasRedirected;
+
+	protected override void OnInitialized()
+	{
+		var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+		if (relativePath.StartsWith("login", StringComparison.OrdinalIgnoreCase))
+		{
+			_shouldRenderLogin = true;
+		}
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!firstRender || _shouldRenderLogin || _hasRedirected)
+			return;
+
+		try
+		{
+			if (AuthProvider is InMemoryAuthStateProvider p)
+			{
+				var user = await p.GetStoredUserAsync();
+
+				if (user == null)
+				{
+					_hasRedirected = true;
+					Nav.NavigateTo("/login", forceLoad: true);
+				}
+			}
+		}
+		catch (CryptographicException)
+		{
+			// Fehlerhafte Daten löschen & weiterleiten
+			await _store.DeleteAsync("dkr.auths");
+			_hasRedirected = true;
+			Nav.NavigateTo("/login", forceLoad: true);
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"⚠️ Fehler beim Auth-Check: {ex.Message}");
+			// Optional: Redirect als Fallback
+			_hasRedirected = true;
+			Nav.NavigateTo("/login", forceLoad: true);
+		}
+	}
+}
+
+@if (_shouldRenderLogin)
+{
+	<Login />
 }

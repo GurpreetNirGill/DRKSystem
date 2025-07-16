@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using DKR.Core.Interfaces;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using System.Text.Json;
+using System.Security.Cryptography;
 
 namespace DKR.Web.Auth;
 
@@ -38,7 +39,7 @@ public class CookieAuthenticationStateProvider : AuthenticationStateProvider
         }
     }
 }
- 
+
 public sealed class InMemoryAuthStateProvider : AuthenticationStateProvider
 {
     private const string StorageKey = "dkr.user";
@@ -49,22 +50,41 @@ public sealed class InMemoryAuthStateProvider : AuthenticationStateProvider
 
     public InMemoryAuthStateProvider(ProtectedLocalStorage store) => _store = store;
 
-    /* Called by Blazor frame‑work */
     public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
         Task.FromResult(new AuthenticationState(_principal));
 
     /* -------- PUBLIC API -------- */
+
     public async Task SignInAsync(UserInfo info)
     {
         _principal = BuildPrincipal(info);
-        await _store.SetAsync(StorageKey, JsonSerializer.Serialize(info));
+
+        try
+        {
+            var json = JsonSerializer.Serialize(info);
+            await _store.SetAsync(StorageKey, json);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Fehler beim Speichern im LocalStorage: {ex.Message}");
+        }
+
         Notify();
     }
 
     public async Task SignOutAsync()
     {
         _principal = new ClaimsPrincipal(new ClaimsIdentity());
-        await _store.DeleteAsync(StorageKey);
+
+        try
+        {
+            await _store.DeleteAsync(StorageKey);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Fehler beim Löschen aus LocalStorage: {ex.Message}");
+        }
+
         Notify();
     }
 
@@ -74,16 +94,37 @@ public sealed class InMemoryAuthStateProvider : AuthenticationStateProvider
         if (_initialised) return;
         _initialised = true;
 
-        var stored = await _store.GetAsync<string>(StorageKey);
-        if (stored.Success && !string.IsNullOrWhiteSpace(stored.Value))
+        try
         {
-            var info = JsonSerializer.Deserialize<UserInfo>(stored.Value,
-                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (info is not null)
+            var stored = await _store.GetAsync<string>(StorageKey);
+            if (stored.Success && !string.IsNullOrWhiteSpace(stored.Value))
             {
-                _principal = BuildPrincipal(info);
-                Notify();
+                var info = JsonSerializer.Deserialize<UserInfo>(stored.Value,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (info is not null)
+                {
+                    _principal = BuildPrincipal(info);
+                    Notify();
+                }
             }
+        }
+        catch (CryptographicException)
+        {
+            // Schlüssel nicht mehr gültig – Daten entfernen
+            Console.WriteLine("⚠️ Gespeicherte Auth-Daten konnten nicht entschlüsselt werden. Sie wurden gelöscht.");
+            try
+            {
+                await _store.DeleteAsync(StorageKey);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ Fehler beim Löschen beschädigter Daten: {ex.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Unerwarteter Fehler beim Initialisieren des Auth-Status: {ex.Message}");
         }
     }
 
@@ -96,11 +137,43 @@ public sealed class InMemoryAuthStateProvider : AuthenticationStateProvider
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, u.UserId),
-            new(ClaimTypes.Name,           u.Username),
-            new(ClaimTypes.Email,          u.Email ?? "")
+            new(ClaimTypes.Name, u.Username),
+            new(ClaimTypes.Email, u.Email ?? "")
         };
+
         claims.AddRange(u.Roles.Select(r => new Claim(ClaimTypes.Role, r)));
+
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "InMemory"));
     }
 
+    public async Task<UserInfo?> GetStoredUserAsync()
+    {
+        try
+        {
+            var stored = await _store.GetAsync<string>(StorageKey);
+
+            if (stored.Success && !string.IsNullOrWhiteSpace(stored.Value))
+            {
+                var user = JsonSerializer.Deserialize<UserInfo>(stored.Value, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                return user;
+            }
+        }
+        catch (CryptographicException)
+        {
+            await _store.DeleteAsync(StorageKey);
+            Console.WriteLine("⚠️ Gespeicherte Auth-Daten konnten nicht entschlüsselt werden. Sie wurden gelöscht.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Fehler beim Lesen gespeicherter Benutzerinformationen: {ex.Message}");
+        }
+
+        return null;
+    }
+
 }
+
