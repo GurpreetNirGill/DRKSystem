@@ -3,10 +3,79 @@
 @using DKR.Core.Services
 @using DKR.Core.Entities
 @using DKR.Shared.Enums
+@inject ClientService ClientService
+@inject NavigationManager Navigation
 
+<PageTitle>Klienten - DKR System</PageTitle>
 
-<PageTitle>Client - DKR System</PageTitle>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Klienten</h1>
+        <button class="btn btn-primary" @onclick="CreateClient">
+            Klienten erstellen
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>UUID</th>
+                        <th>Geschlecht</th>
+                        <th>Hauptsubstanz</th>
+                        <th>Geburtsjahr</th>
+                        <th>Ereignisdatum</th>
+                        <th>Behandlungshistorie</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (clients?.Any() == true)
+                    {
+                        @foreach (var client in clients)
+                        {
+                            <tr>
+                                <td>@client.UUID</td>
+                                <td>@FormatGender(client.Gender)</td>
+                                <td>@client.MainSubstance</td>
+                                <td>@client.BirthYear</td>
+                                <td>@client.FirstVisitDate.ToString("dd.MM.yyyy")</td>
+                                <td>@client.TreatmentHistory</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center">Keine Klienten gefunden.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
 @code {
-   
+    private List<Client> clients = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        clients = await ClientService.GetAllClientAsync();
+    }
+
+    private void CreateClient()
+    {
+        Navigation.NavigateTo("/client/create");
+    }
+
+    // Optional: Lokalisierte Darstellung für Gender
+    private string FormatGender(Gender? gender) => gender switch
+    {
+        Gender.Male => "Männlich",
+        Gender.Female => "Weiblich",
+        Gender.Diverse => "Divers",
+        Gender.NotSpecified => "Keine Angabe",
+        _ => "Unbekannt"
+    };
 }

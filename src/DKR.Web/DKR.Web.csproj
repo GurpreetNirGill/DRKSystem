@@ -28,6 +28,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Update="Pages\CreateClient.razor">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
     <Content Update="Pages\EmergencyGrid.razor">
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
